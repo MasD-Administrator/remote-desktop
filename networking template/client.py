@@ -7,10 +7,12 @@ FORMAT = "utf-8"
 
 with open("../protocols.json") as file:
     import json
+
     protocols = json.load(file)
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((SERVER, PORT))
+
 
 def send(protocol, data):
     msg = protocol + protocols["PROTOCOL_MESSAGE_SPLITTER"] + data
@@ -20,6 +22,7 @@ def send(protocol, data):
     send_length += b" " * (HEADER - len(send_length))
     client.send(send_length)
     client.send(message)
+
 
 def main():
     connected = True
@@ -33,8 +36,8 @@ def main():
 
 
 from threading import Thread
-Thread(target=main).start()
 
+Thread(target=main).start()
 
 send(protocols["ADD_ACTIVE_USER"], "sooriya")
 send(protocols["ADD_ACTIVE_USER"], "deepana")
@@ -45,4 +48,3 @@ for i in range(0, 3):
     send(protocols["TUNNEL"], "hello me!")
 
 send("DELETE_TUNNEL", "hOW dId YoU sEE tHIs MesSAge")
-

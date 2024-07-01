@@ -2,14 +2,13 @@ import socket
 import json
 import threading
 
-import active_users
 import tunnels
-
+import users
 
 class ServerNetwork:
     def __init__(self):
-        self.active_users = active_users.ActiveUsers()
         self.tunnels = tunnels.Tunnels()
+        self.users = users.Users()
 
         with open("../protocols.json") as protocols_file:
             self.protocols = json.load(protocols_file)
@@ -41,7 +40,6 @@ class ServerNetwork:
 
     def handle_client(self, client, address):
         self.client_connected = True
-        self.client_name = ""
 
         while self.client_connected:
             msg_length = client.recv(self.HEADER).decode(self.FORMAT)
@@ -51,51 +49,33 @@ class ServerNetwork:
 
                 self.protocol_check(msg, client)
 
-    def protocol_check(self, message: str, client):
+    def protocol_check(self, message: str, user):
+        # TODO - server user msg handeling
         protocol, data = message.split(self.protocols["PROTOCOL_MESSAGE_SPLITTER"])
 
         if protocol == self.protocols["DISCONNECT"]:
             self.client_connected = False
 
-        # TODO - get the return values of the add client function and return a message appropriately
-        elif protocol == self.protocols["ADD_ACTIVE_USER"]:
+        elif protocol == self.protocols["ADD_USER"]:
             name = data
-            self.active_users.add_client(name, client)
-            self.client_name = name
+            if self.users.add_user(name):
+                self.users.make_user_online(name, user)
+                # send(success)
+            else:
+                print("alrdy exists mofos")
+                # send(failure)
 
-        elif protocol == self.protocols["REMOVE_ACTIVE_USER"]:
+        elif protocol == self.protocols["DELETE_USER"]:
             name = data
-            self.active_users.remove_client(name)
-            self.client_name = None
+            self.users.delete_user(name)
 
         elif protocol == self.protocols["LOG_IN"]:
-            pass
+            name = data
+            self.users.make_user_online(name, user)
 
-        elif protocol == self.protocols["LOG_OUT"]:
-            pass
-
-        elif protocol == self.protocols["MAKE_TUNNEL"]:
-            requester_name, requestee_name = data.split(self.protocols["TUNNEL_CREATION_NAME_SEPARATOR"])
-
-            if not self.active_users.get_tunnel_status(requester_name) and not self.active_users.get_tunnel_status(
-                    requestee_name):
-                self.active_users.set_active_tunnel(requester_name, True)
-                self.active_users.set_active_tunnel(requestee_name, True)
-
-                self.tunnels.make_new_tunnel(requester_name,
-                                             self.active_users.get_socket_object(requester_name),
-                                             requestee_name,
-                                             self.active_users.get_socket_object(requestee_name))
-
-                self.requestee = self.tunnels.get_socket_object(requester_name)
-                self.client_name = requester_name
-                # do the messaging to let the client know
-
-        elif protocol == self.protocols["DELETE_TUNNEL"]:
-            self.tunnels.delete_tunnel(self.client_name)
-
-        elif protocol == self.protocols["TUNNEL"]:
-            self.send(data, self.requestee)
+        elif protocol == self.protocols["LOG_OFF"]:
+            name = data
+            self.users.make_user_offline(name)
 
     def send(self, msg, client_connection_object):
         message = msg.encode(self.FORMAT)
@@ -111,15 +91,10 @@ class ServerNetwork:
 
     # DEBUGGER
     def input_check(self):
-        while True:
+        debug = False
+        while debug == True:
             inpt = input(":> ")
-            if inpt == "report":
-                print(self.active_users.clients.keys())
-                print(self.tunnels.tunnels.keys())
-            elif inpt == "user count":
-                print(str(threading.active_count() - 2))
-            elif inpt == "exit":
-                self.shutdown()
+            # TODO - add the debugging functionality
 
 
 if __name__ == "__main__":
