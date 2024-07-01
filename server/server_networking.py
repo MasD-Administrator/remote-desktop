@@ -5,6 +5,7 @@ import threading
 import active_users
 import tunnels
 
+
 class ServerNetwork:
     def __init__(self):
         self.active_users = active_users.ActiveUsers()
@@ -22,7 +23,7 @@ class ServerNetwork:
 
             if server_data["ip"] == True:
                 self.IP = socket.gethostbyname(socket.gethostname())
-            elif type(server_data["ip"]) == str:
+            elif type(server_data["ip"]) is str:
                 self.IP = server_data["ip"]
             else:
                 self.IP = None
@@ -37,7 +38,6 @@ class ServerNetwork:
         while True:
             conn, addr = self.server_socket.accept()
             threading.Thread(target=self.handle_client, args=(conn, addr)).start()
-
 
     def handle_client(self, client, address):
         self.client_connected = True
@@ -57,6 +57,7 @@ class ServerNetwork:
         if protocol == self.protocols["DISCONNECT"]:
             self.client_connected = False
 
+        # TODO - get the return values of the add client function and return a message appropriately
         elif protocol == self.protocols["ADD_ACTIVE_USER"]:
             name = data
             self.active_users.add_client(name, client)
@@ -66,6 +67,12 @@ class ServerNetwork:
             name = data
             self.active_users.remove_client(name)
             self.client_name = None
+
+        elif protocol == self.protocols["LOG_IN"]:
+            pass
+
+        elif protocol == self.protocols["LOG_OUT"]:
+            pass
 
         elif protocol == self.protocols["MAKE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["TUNNEL_CREATION_NAME_SEPARATOR"])
@@ -98,7 +105,11 @@ class ServerNetwork:
         client_connection_object.send(send_length)
         client_connection_object.send(message)
 
-   # DEBUGGER
+    def shutdown(self):
+        from os import _exit
+        _exit(0)
+
+    # DEBUGGER
     def input_check(self):
         while True:
             inpt = input(":> ")
@@ -108,8 +119,7 @@ class ServerNetwork:
             elif inpt == "user count":
                 print(str(threading.active_count() - 2))
             elif inpt == "exit":
-                from os import _exit
-                _exit(0)
+                self.shutdown()
 
 
 if __name__ == "__main__":
