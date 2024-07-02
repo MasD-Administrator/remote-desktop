@@ -1,9 +1,13 @@
 {
   "PROTOCOL_MESSAGE_SPLITTER": "/!!/",
   "TUNNEL_CREATION_NAME_SEPARATOR": "/??/",
+  "TUNNEL_STREAM_NAME_SEPARATOR": "/~~/",
   "DISCONNECT": "x000",
   "ADD_USER": "x001",
   "DELETE_USER": "x002",
   "LOG_IN": "x003",
-  "LOG_OFF": "x004"
+  "LOG_OUT": "x004",
+  "MAKE_TUNNEL": "x005",
+  "REMOVE_TUNNEL": "x006",
+  "TUNNEL_STREAM": "x007"
 }

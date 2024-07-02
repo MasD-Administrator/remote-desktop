@@ -52,11 +52,15 @@ class ControllerNetwork:
         self.client.send(message)
 
     def testing(self):
+        self.send(self.protocols["LOG_IN"], "sooriya")
+
         pass
 
 
+
+
     def network_shutdown(self):
-        # self.send(self.protocols["DELETE_USER"], "sooriya")
+        self.send(self.protocols["LOG_OUT"], "sooriya")
         self.send(self.protocols["DISCONNECT"], " ")
 
         from os import _exit
