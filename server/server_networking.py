@@ -39,7 +39,6 @@ class ServerNetwork:
     def handle_client(self, client, address):
         self.client_connected = True
 
-        self.user_tunnel_socket = None
         self.user_name = None
 
         while self.client_connected:
@@ -77,21 +76,18 @@ class ServerNetwork:
         elif protocol == self.protocols["LOG_OUT"]:
             self.user_name = data
             self.users.make_user_offline(self.user_name)
+            self.user_name = None
 
         elif protocol == self.protocols["MAKE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["TUNNEL_CREATION_NAME_SEPARATOR"])
             self.users.make_tunnel(requester_name, requestee_name)
 
-            self.user_tunnel_socket = self.users.get_user_socket(requestee_name)
-
         elif protocol == self.protocols["REMOVE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["TUNNEL_CREATION_NAME_SEPARATOR"])
             self.users.remove_tunnel(requester_name, requestee_name)
 
-            self.user_tunnel_socket = None # the separate variable is for optimization, referencing the database is also possible
-
         elif protocol == self.protocols["TUNNEL_STREAM"]:
-            self.send(data, self.user_tunnel_socket)
+            self.send(data, self.users.users[self.user_name]["tunneling_socket"])
 
     def send(self, msg, client_connection_object):
         message = msg.encode(self.FORMAT)
@@ -111,7 +107,8 @@ class ServerNetwork:
         while debug == True:
             inpt = input(":> ")
             if inpt == "users":
-                print(self.users.users_status())
+                for name in self.users.users:
+                    print(f"{name}: [is_online:{self.users.users[name]['is_online']}, has_active_tunnel:{self.users.users[name]['has_active_tunnel']}] ")
 
 if __name__ == "__main__":
     ServerNetwork().main()

@@ -34,10 +34,6 @@ class Users:
 
         self.save_database()
 
-    def get_user_socket(self, user_name):
-        if self.username_in_database(user_name):
-            return self.users[user_name]["user_connection_object"]
-
     def make_user_online(self, user_name, user_connection_object):
         self.users[user_name]["is_online"] = True
         self.users[user_name]["user_connection_object"] = user_connection_object
@@ -48,11 +44,16 @@ class Users:
         self.users[user_name]["has_active_tunnel"] = False
 
     def make_tunnel(self, requester_name, requestee_name):
-        self.users[requester_name]["has_active_tunnel"] = True
-        self.users[requestee_name]["has_active_tunnel"] = True
+        if self.is_user_online(requester_name) and self.is_user_online(requestee_name):
+            self.users[requester_name]["has_active_tunnel"] = True
+            self.users[requestee_name]["has_active_tunnel"] = True
 
-        self.users[requester_name]["tunneling_socket"] = self.users[requestee_name]["user_connection_object"]
-        self.users[requestee_name]["tunneling_socket"] = self.users[requester_name]["user_connection_object"]
+            self.users[requester_name]["tunneling_socket"] = self.users[requestee_name]["user_connection_object"]
+            self.users[requestee_name]["tunneling_socket"] = self.users[requester_name]["user_connection_object"]
+            return True
+        else:
+            print("user offline")
+            return False
 
     def remove_tunnel(self,  requester_name, requestee_name):
         self.users[requester_name]["has_active_tunnel"] = False
@@ -60,6 +61,9 @@ class Users:
 
         self.users[requester_name]["tunneling_socket"] = None
         self.users[requestee_name]["tunneling_socket"] = None
+
+    def is_user_online(self, user_name):
+        return self.users[user_name]["is_online"]
 
 
     def users_status(self):

@@ -30,7 +30,7 @@ class ControllerNetwork:
         Thread(target=self.receive_data).start()
         Thread(target=self.input_check).start()
 
-        self.testing()
+        self.test_code()
 
     def receive_data(self):
         connected = True
@@ -51,16 +51,18 @@ class ControllerNetwork:
         self.client.send(send_length)
         self.client.send(message)
 
-    def testing(self):
-        self.send(self.protocols["LOG_IN"], "sooriya")
-
+    def test_code(self):
+        # self.send(self.protocols["LOG_IN"], "sooriya")
+        # self.send(self.protocols["LOG_IN"], "deepana")
+        # self.send(self.protocols["MAKE_TUNNEL"], f"sooriya{self.protocols['TUNNEL_CREATION_NAME_SEPARATOR']}deepana")
+        # self.send(self.protocols["TUNNEL_STREAM"], "hello deepana or sooriya or both")
         pass
 
 
 
 
     def network_shutdown(self):
-        self.send(self.protocols["LOG_OUT"], "sooriya")
+
         self.send(self.protocols["DISCONNECT"], " ")
 
         from os import _exit
