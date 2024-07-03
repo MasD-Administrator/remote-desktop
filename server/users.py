@@ -7,27 +7,36 @@ class Users:
         self.users = {}
 
         with open("user_database.json") as database:
-            for user_name in json.load(database)["clients"]:
-                self.add_user(user_name)
+            data = json.load(database)
+
+            for user in list(data.keys()):
+                self.add_user(user, data[user])
 
 
-    def add_user(self, user_name):
+    def add_user(self, user_name, password):
+
+
         username_in_database = self.username_in_database(user_name)
-        if not username_in_database:
+        password_in_database = self.password_in_database(password)
+
+        if not username_in_database and not password_in_database:
             self.users[user_name] = {
                 "user_connection_object": None,
                 "is_online": False,
                 "has_active_tunnel": False,
-                "tunneling_socket": None
+                "tunneling_socket": None,
+                "password": password
             }
-        elif username_in_database:
+            self.save_database()
+            return True
+        elif username_in_database or password_in_database:
+            self.save_database()
             return False
 
-        self.save_database()
 
-    def delete_user(self, user_name):
+    def delete_user(self, user_name, password):
         username_in_database = self.username_in_database(user_name)
-        if username_in_database:
+        if username_in_database and password == self.users[user_name]["password"]:
             self.users.pop(user_name)
         else:
             return False
@@ -43,8 +52,8 @@ class Users:
         self.users[user_name]["user_connection_object"] = None
         self.users[user_name]["has_active_tunnel"] = False
 
-    def make_tunnel(self, requester_name, requestee_name):
-        if self.is_user_online(requester_name) and self.is_user_online(requestee_name):
+    def make_tunnel(self, requester_name, requestee_name, requestee_password):
+        if self.is_user_online(requester_name) and self.is_user_online(requestee_name) and requestee_password == self.users[requestee_name]["password"]:
             self.users[requester_name]["has_active_tunnel"] = True
             self.users[requestee_name]["has_active_tunnel"] = True
 
@@ -52,7 +61,7 @@ class Users:
             self.users[requestee_name]["tunneling_socket"] = self.users[requester_name]["user_connection_object"]
             return True
         else:
-            print("user offline")
+            print("user offline or wrong password")
             return False
 
     def remove_tunnel(self,  requester_name, requestee_name):
@@ -75,13 +84,21 @@ class Users:
 
     def save_database(self):
         with open("user_database.json", "w") as database:
-            json.dump({"clients": list(self.users.keys())}, database, indent=4)
+            write_data = {}
+
+            for user in list(self.users.keys()):
+                write_data[user] = self.users[user]["password"]
+
+            json.dump(write_data, database, indent=4)
 
     def username_in_database(self, user_name):
-        if user_name in self.users:
-            return True
-        else:
-            return False
+        return user_name in self.users
+
+    def password_in_database(self, password):
+        for user in self.users:
+            if self.users[user]["password"] == password:
+                return True
+        return False
 
 
 

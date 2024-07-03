@@ -9,7 +9,7 @@ class ControllerNetwork:
         with open("../protocols.json") as file:
             self.protocols = json.load(file)
 
-        with open("controller_network_data.json") as controller_data_file:
+        with open("user_network_data.json") as controller_data_file:
             controller_data = json.load(controller_data_file)
 
             self.SERVER_PORT = controller_data["server_port"]
@@ -41,6 +41,7 @@ class ControllerNetwork:
                 msg = self.client.recv(msg_length).decode(self.FORMAT)
 
                 print(msg)
+                # TODO this is where protocol check should be
 
     def send(self, protocol, data):
         msg = protocol + self.protocols["PROTOCOL_MESSAGE_SPLITTER"] + data
@@ -52,14 +53,41 @@ class ControllerNetwork:
         self.client.send(message)
 
     def test_code(self):
-        # self.send(self.protocols["LOG_IN"], "sooriya")
-        # self.send(self.protocols["LOG_IN"], "deepana")
-        # self.send(self.protocols["MAKE_TUNNEL"], f"sooriya{self.protocols['TUNNEL_CREATION_NAME_SEPARATOR']}deepana")
-        # self.send(self.protocols["TUNNEL_STREAM"], "hello deepana or sooriya or both")
-        pass
+        ...
+        self.make_user("a", 'a1')
+        self.make_user("b", "b1")
+
+        self.login("a")
+        self.login("b")
+
+        self.make_tunnel("a", "b", "b1")
+        self.tunnel_stream("hello world")
+
+        self.remove_tunnel("a", "b")
 
 
 
+
+    def make_user(self, username, password):
+        self.send(self.protocols["ADD_USER"], f"{username}{self.protocols['NAME_PASSWORD_SEPARATOR']}{password}")
+
+    def delete_user(self, username, password):
+        self.send(self.protocols["DELETE_USER"], f"{username}{self.protocols['NAME_PASSWORD_SEPARATOR']}{password}")
+
+    def login(self, username):
+        self.send(self.protocols["LOG_IN"], username)
+
+    def logout(self, username):
+        self.send(self.protocols["LOG_OUT"], username)
+
+    def make_tunnel(self, username, connector_name, connector_password):
+        self.send(self.protocols["MAKE_TUNNEL"], f"{username}{self.protocols['MAKE_TUNNEL_INPUT_SEPARATOR']}{connector_name}{self.protocols['MAKE_TUNNEL_INPUT_SEPARATOR']}{connector_password}")
+
+    def remove_tunnel(self, username, connector_name):
+        self.send(self.protocols["REMOVE_TUNNEL"], f"{username}{self.protocols['REMOVE_TUNNEL_INPUT_SEPARATOR']}{connector_name}")
+
+    def tunnel_stream(self, data):
+        self.send(self.protocols['TUNNEL_STREAM'], data)
 
     def network_shutdown(self):
 

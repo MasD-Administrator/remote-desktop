@@ -57,17 +57,17 @@ class ServerNetwork:
             self.client_connected = False
 
         elif protocol == self.protocols["ADD_USER"]:
-            name = data
-            if self.users.add_user(name):
+            name, password = data.split(self.protocols["NAME_PASSWORD_SEPARATOR"])
+            if self.users.add_user(name, password):
                 self.users.make_user_online(name, user)
                 # send(success)
             else:
-                print("alrdy exists mofos")
+                pass
                 # send(failure)
 
         elif protocol == self.protocols["DELETE_USER"]:
-            self.user_name = data
-            self.users.delete_user(self.user_name)
+            self.user_name, password = data.split(self.protocols["NAME_PASSWORD_SEPARATOR"])
+            self.users.delete_user(self.user_name, password)
 
         elif protocol == self.protocols["LOG_IN"]:
             self.user_name = data
@@ -79,11 +79,11 @@ class ServerNetwork:
             self.user_name = None
 
         elif protocol == self.protocols["MAKE_TUNNEL"]:
-            requester_name, requestee_name = data.split(self.protocols["TUNNEL_CREATION_NAME_SEPARATOR"])
-            self.users.make_tunnel(requester_name, requestee_name)
+            requester_name, requestee_name, requestee_password = data.split(self.protocols["MAKE_TUNNEL_INPUT_SEPARATOR"])
+            self.users.make_tunnel(requester_name, requestee_name, requestee_password)
 
         elif protocol == self.protocols["REMOVE_TUNNEL"]:
-            requester_name, requestee_name = data.split(self.protocols["TUNNEL_CREATION_NAME_SEPARATOR"])
+            requester_name, requestee_name = data.split(self.protocols["REMOVE_TUNNEL_INPUT_SEPARATOR"])
             self.users.remove_tunnel(requester_name, requestee_name)
 
         elif protocol == self.protocols["TUNNEL_STREAM"]:
@@ -103,7 +103,7 @@ class ServerNetwork:
 
     # DEBUGGER
     def input_check(self):
-        debug = True
+        debug = False
         while debug == True:
             inpt = input(":> ")
             if inpt == "users":
