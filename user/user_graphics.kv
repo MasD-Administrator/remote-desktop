@@ -1,74 +1,130 @@
 
-
 MDScreen:
     MDBoxLayout:
         orientation: "horizontal"
+        padding: 100
+        spacing: 60
         size: root.width, root.height
 
         MDBoxLayout:
-            padding: 70
-            spacing: 60
             orientation: "vertical"
 
+            MDBoxLayout:
+                orientation: "vertical"
 
-            MDLabel:
-                markup: True
-                font_size: "30dp"
-                text: "[b]My Details[b]"
-                halign: "center"
+                MDLabel:
+                    markup: True
+                    text: "Connected to [b]192.168.1.1[/b] on port [b]5050[/b]"
 
-            MDLabel:
-                text: "Server IP  192.188.1.1"
+                MDLabel:
+                    markup: True
+                    font_size: "30dp"
+                    text: "Your name\n[b]NIHL-COL-POS-10[/b]"
 
-            MDLabel:
-                text: "Server Port  5050"
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: 40
+
+                MDTextField:
+                    hint_text: "Username"
+
+                BoxLayout:
+                    orientation: "horizontal"
+                    spacing: 30
+
+                    MDTextField:
+                        hint_text: "Password"
+                        password: True
+
+                    MDIconButton:
+                        icon: "eye-off"
+
+                MDRectangleFlatButton:
+                    text: "Connect"
+                    size_hint: 1, 2
+
+        MDBoxLayout:
+            orientation: "vertical"
+            size: root.width, root.height
+
+            MDScrollView:
+                MDList:
+                    OneLineIconListItem:
+                        text: "NIHL-COL-POS-29"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
+
+                    OneLineIconListItem:
+                        text: "NIHL-COL-SVR-2"
+
+                        IconLeftWidget:
+                            icon: "account"
 
 
+            MDBoxLayout:
+                orientation: "horizontal"
+                size: root.width, root.height
 
-            MDLabel:
-                markup: True
-                font_size: "30dp"
-                text: "[b]Connection[b]"
-                halign: "center"
+                pos_hint: {"x":0.8}
 
-            MDLabel:
-                text: "My Name  Sooriya "
+                MDIconButton:
+                    icon: "account-circle"
+                    halign: "right"
 
-            MDTextField:
-                height: "10"
-                background_color: app.theme_cls.bg_normal
-                hint_text: "Username"
-
-            MDRoundFlatButton:
-                text: "Connect"
-                pos_hint: {"center_x": 0.5, "center_y": 0.5}
-                size_hint: (1, 3)
-                halign: "center"
-                font_size: "20dp"
-
-
-        MDScrollView:
-            MDList:
-                OneLineAvatarIconListItem:
-                    text: "Sooriya"
-
-                    IconLeftWidget:
-                        icon: "account"
-
-                OneLineAvatarIconListItem:
-                    text: "Sooriya"
-
-                    IconLeftWidget:
-                        icon: "account"
-
-                OneLineAvatarIconListItem:
-                    text: "Sooriya"
-
-                    IconLeftWidget:
-                        icon: "account"
-
-                OneLineAvatarIconListItem:
-                    text: "Sooriya"
-
-                    IconLeftWidget:
-                        icon: "account"
+                MDIconButton:
+                    icon: "key"
