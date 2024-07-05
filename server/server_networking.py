@@ -57,17 +57,17 @@ class ServerNetwork:
             self.client_connected = False
 
         elif protocol == self.protocols["ADD_USER"]:
-            name, password = data.split(self.protocols["NAME_PASSWORD_SEPARATOR"])
-            if self.users.add_user(name, password):
-                self.users.make_user_online(name, user)
+            self.user_name = data
+            if self.users.add_user(self.user_name, False):
+                self.users.make_user_online(self.user_name, user)
                 # send(success)
             else:
-                pass
+                ...
                 # send(failure)
 
         elif protocol == self.protocols["DELETE_USER"]:
-            self.user_name, password = data.split(self.protocols["NAME_PASSWORD_SEPARATOR"])
-            self.users.delete_user(self.user_name, password)
+            self.user_name = data
+            self.users.delete_user(self.user_name)
 
         elif protocol == self.protocols["LOG_IN"]:
             self.user_name = data
@@ -78,9 +78,17 @@ class ServerNetwork:
             self.users.make_user_offline(self.user_name)
             self.user_name = None
 
+        elif protocol == self.protocols["RESTRICTED"]:
+            self.user_name = data
+            self.users.restricted(self.user_name)
+
+        elif protocol == self.protocols["UNRESTRICTED"]:
+            self.user_name = data
+            self.users.unrestricted(self.user_name)
+
         elif protocol == self.protocols["MAKE_TUNNEL"]:
-            requester_name, requestee_name, requestee_password = data.split(self.protocols["MAKE_TUNNEL_INPUT_SEPARATOR"])
-            self.users.make_tunnel(requester_name, requestee_name, requestee_password)
+            requester_name, requestee_name = data.split(self.protocols["MAKE_TUNNEL_INPUT_SEPARATOR"])
+            self.users.make_tunnel(requester_name, requestee_name)
 
         elif protocol == self.protocols["REMOVE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["REMOVE_TUNNEL_INPUT_SEPARATOR"])

@@ -1,130 +1,145 @@
 
-MDScreen:
-    MDBoxLayout:
+<MainScreen>:
+    BoxLayout:
         orientation: "horizontal"
-        padding: 100
-        spacing: 60
-        size: root.width, root.height
+
+        MDNavigationRail:
+            MDNavigationRailFabButton:
+                icon: "cog"
+                on_release:
+                    root.manager.transition.direction = "left"
+                    root.manager.current = "settings"
 
         MDBoxLayout:
+            user_list: user_list
+            size_hint_x: .8
+
             orientation: "vertical"
+            padding: 70
 
-            MDBoxLayout:
-                orientation: "vertical"
 
-                MDLabel:
-                    markup: True
-                    text: "Connected to [b]192.168.1.1[/b] on port [b]5050[/b]"
 
-                MDLabel:
-                    markup: True
-                    font_size: "30dp"
-                    text: "Your name\n[b]NIHL-COL-POS-10[/b]"
 
-            MDBoxLayout:
-                orientation: "vertical"
+            MDLabel:
+                markup: True
+                font_size: "15sp"
+                text: "Connected to [b]1.1.1.1[/b] on port [b]1111[/b]"
+                halign: "center"
+                size_hint: (1,.05)
+
+            MDLabel:
+                markup: True
+                font_size: '25sp'
+                text: "Your username [b]NHLCOLPOS19[/b]"
+                halign: "center"
+                size_hint: (1, .1)
+
+            BoxLayout:
+                orientation: "horizontal"
                 spacing: 40
+                size_hint: (1, 0.2)
 
                 MDTextField:
+                    mode: "rectangle"
+                    max_text_length: 12
                     hint_text: "Username"
+
+                MDRectangleFlatButton:
+                    font_size: "15dp"
+                    text: "Connect"
+                    size_hint: (.3, .75)
+
+            BoxLayout:
+                size_hint_y: .3
+                MDTextField:
+                    hint_text: "Search"
+                    icon_left: "magnify"
+
+            ScrollView:
+                MDList:
+                    id: user_list
+
+
+
+<SettingsScreen>:
+    BoxLayout:
+        orientation: "horizontal"
+
+        MDNavigationRail:
+            MDNavigationRailFabButton:
+                icon: "arrow-left-bold"
+                on_release:
+                    root.manager.transition.direction = "right"
+                    root.manager.current = "main"
+
+        # this is sort of the main layout excepting the navigation rail
+        BoxLayout:
+            orientation: "horizontal"
+            padding: 70
+
+            BoxLayout:
+                orientation: "vertical"
+
+                Label:
+                    markup: True
+                    font_size: "20dp"
+                    text: "[b]Username[/b]"
+                    pos_hint: {"center_x": .2}
+
+                # defines the username block
+                GridLayout:
+                    spacing: 20
+                    size_hint: (.5, 1)
+                    rows: 4
+                    cols: 2
+
+                    Label:
+                        text: "Company"
+                    TextInput:
+                        height: "30dp"
+                        text_color: "white"
+
+                    Label:
+                        text: "Location"
+                    TextInput:
+                        height: "30dp"
+                        text_color: "white"
+
+                    Label:
+                        text: "Type"
+                    TextInput:
+                        height: "30dp"
+                        text_color: "white"
+
+                    Label:
+                        text: "Number"
+                    TextInput:
+                        height: "30dp"
+                        text_color: "white"
+
+                Widget:
+                    size_hint_y: 1
 
                 BoxLayout:
                     orientation: "horizontal"
-                    spacing: 30
+                    size_hint: (.45, .4)
+                    Label:
+                        markup: True
+                        font_size: "20dp"
+                        text: "[b]Restricted Mode[/b]"
 
-                    MDTextField:
-                        hint_text: "Password"
-                        password: True
+                    MDSwitch:
+                        active: False
 
-                    MDIconButton:
-                        icon: "eye-off"
+
+
+            GridLayout:
+                spacing: 20
+                cols: 3
+                rows: 5
 
                 MDRectangleFlatButton:
-                    text: "Connect"
-                    size_hint: 1, 2
+                    text: "Save Username"
 
-        MDBoxLayout:
-            orientation: "vertical"
-            size: root.width, root.height
-
-            MDScrollView:
-                MDList:
-                    OneLineIconListItem:
-                        text: "NIHL-COL-POS-29"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-                    OneLineIconListItem:
-                        text: "NIHL-COL-SVR-2"
-
-                        IconLeftWidget:
-                            icon: "account"
-
-
-            MDBoxLayout:
-                orientation: "horizontal"
-                size: root.width, root.height
-
-                pos_hint: {"x":0.8}
-
-                MDIconButton:
-                    icon: "account-circle"
-                    halign: "right"
-
-                MDIconButton:
-                    icon: "key"
+                MDRectangleFlatButton:
+                    text: "Save Restriction Mode"
