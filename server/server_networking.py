@@ -4,6 +4,7 @@ import threading
 
 import users
 
+
 class ServerNetwork:
     def __init__(self):
         self.users = users.Users()
@@ -39,8 +40,6 @@ class ServerNetwork:
     def handle_client(self, client, address):
         self.client_connected = True
 
-        self.user_name = None
-
         while self.client_connected:
             msg_length = client.recv(self.HEADER).decode(self.FORMAT)
             if msg_length:
@@ -51,40 +50,35 @@ class ServerNetwork:
 
     def protocol_check(self, message: str, user):
         # TODO - server user msg handling
+        # TODO - loads of error handling to do
+        # 'data' for most of the user related protocols is the name of the user
         protocol, data = message.split(self.protocols["PROTOCOL_MESSAGE_SPLITTER"])
 
         if protocol == self.protocols["DISCONNECT"]:
             self.client_connected = False
 
         elif protocol == self.protocols["ADD_USER"]:
-            self.user_name = data
-            if self.users.add_user(self.user_name, False):
-                self.users.make_user_online(self.user_name, user)
+            if self.users.add_user(data, False):
+                self.users.login(data, user)
                 # send(success)
             else:
                 ...
                 # send(failure)
 
         elif protocol == self.protocols["DELETE_USER"]:
-            self.user_name = data
-            self.users.delete_user(self.user_name)
+            self.users.delete_user(data)
 
         elif protocol == self.protocols["LOG_IN"]:
-            self.user_name = data
-            self.users.make_user_online(self.user_name, user)
+            self.users.login(data, user)
 
         elif protocol == self.protocols["LOG_OUT"]:
-            self.user_name = data
-            self.users.make_user_offline(self.user_name)
-            self.user_name = None
+            self.users.logoff(data)
 
-        elif protocol == self.protocols["RESTRICTED"]:
-            self.user_name = data
-            self.users.restricted(self.user_name)
+        elif protocol == self.protocols["MAKE_RESTRICTED"]:
+            self.users.make_restricted(data)
 
-        elif protocol == self.protocols["UNRESTRICTED"]:
-            self.user_name = data
-            self.users.unrestricted(self.user_name)
+        elif protocol == self.protocols["MAKE_UNRESTRICTED"]:
+            self.users.make_unrestricteded(data)
 
         elif protocol == self.protocols["MAKE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["MAKE_TUNNEL_INPUT_SEPARATOR"])
@@ -95,7 +89,9 @@ class ServerNetwork:
             self.users.remove_tunnel(requester_name, requestee_name)
 
         elif protocol == self.protocols["TUNNEL_STREAM"]:
-            self.send(data, self.users.users[self.user_name]["tunneling_socket"])
+
+            username, send_data = data.split(self.protocols["TUNNEL_STREAM_NAME_DATA_SEPARATOR"])
+            self.send(send_data, self.users.users[username]["tunneling_socket"])
 
     def send(self, msg, client_connection_object):
         message = msg.encode(self.FORMAT)

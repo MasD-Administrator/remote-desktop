@@ -5,7 +5,10 @@ from threading import Thread
 
 
 class ControllerNetwork:
-    def __init__(self):
+    def __init__(self, main):
+        self.main = main
+
+    def setup(self):
         with open("../protocols.json") as file:
             self.protocols = json.load(file)
 
@@ -16,63 +19,52 @@ class ControllerNetwork:
             self.HEADER = controller_data["header"]
             self.FORMAT = controller_data["format"]
 
-            if controller_data["server_ip"] == True:
+            if controller_data["server_ip"]:
                 self.SERVER_IP = socket.gethostbyname(socket.gethostname())
-            elif type(controller_data["ip"]) is str:
-                self.SERVER_IP = controller_data["ip"]
-            else:
+            elif type(controller_data["server_ip"]) is str:
+                self.SERVER_IP = controller_data["server_ip"]
+            elif type(controller_data["server_ip"]) is not str:
                 self.SERVER_IP = None
 
-    def main(self):
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect((self.SERVER_IP, self.SERVER_PORT))
 
-        Thread(target=self.receive_data).start()
-        Thread(target=self.input_check).start()
 
-        self.test_code()
+    def connect(self):
+        try:
+            self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client.connect((self.SERVER_IP, self.SERVER_PORT))
+
+            # self.test_code()
+        except ConnectionRefusedError:
+            return False
 
     def receive_data(self):
-        connected = True
-        while connected:
-            msg_length = self.client.recv(self.HEADER).decode(self.FORMAT)
-            if msg_length:
-                msg_length = int(msg_length)
-                msg = self.client.recv(msg_length).decode(self.FORMAT)
+        msg_length = self.client.recv(self.HEADER).decode(self.FORMAT)
+        if msg_length:
+            msg_length = int(msg_length)
+            msg = self.client.recv(msg_length).decode(self.FORMAT)
 
-                print(msg)
-                # TODO this is where protocol check should be
+            print(msg)
+            # TODO this is where protocol check should be
 
     def send(self, protocol, data):
-        msg = protocol + self.protocols["PROTOCOL_MESSAGE_SPLITTER"] + data
-        message = msg.encode(self.FORMAT)
-        msg_length = len(msg)
-        send_length = str(msg_length).encode(self.FORMAT)
-        send_length += b" " * (self.HEADER - len(send_length))
-        self.client.send(send_length)
-        self.client.send(message)
+        try:
+            # TODO for debug purposes data is type casted into a string
+            msg = protocol + self.protocols["PROTOCOL_MESSAGE_SPLITTER"] + str(data)
+            message = msg.encode(self.FORMAT)
+            msg_length = len(msg)
+            send_length = str(msg_length).encode(self.FORMAT)
+            send_length += b" " * (self.HEADER - len(send_length))
+            self.client.send(send_length)
+            self.client.send(message)
+        except OSError:
+            print("os error")
+            self.main.inform("Cannot send messages whilst not connected!")
 
-    def test_code(self):
-        ...
-        self.make_user("a", 'a1')
-        self.make_user("b", "b1")
+    def make_user(self, username):
+        self.send(self.protocols["ADD_USER"], username)
 
-        self.login("a")
-        self.login("b")
-
-        self.make_tunnel("a", "b", "b1")
-        self.tunnel_stream("hello world")
-
-        self.remove_tunnel("a", "b")
-
-
-
-
-    def make_user(self, username, password):
-        self.send(self.protocols["ADD_USER"], f"{username}{self.protocols['NAME_PASSWORD_SEPARATOR']}{password}")
-
-    def delete_user(self, username, password):
-        self.send(self.protocols["DELETE_USER"], f"{username}{self.protocols['NAME_PASSWORD_SEPARATOR']}{password}")
+    def delete_user(self, username):
+        self.send(self.protocols["DELETE_USER"], username)
 
     def login(self, username):
         self.send(self.protocols["LOG_IN"], username)
@@ -80,19 +72,30 @@ class ControllerNetwork:
     def logout(self, username):
         self.send(self.protocols["LOG_OUT"], username)
 
-    def make_tunnel(self, username, connector_name, connector_password):
-        self.send(self.protocols["MAKE_TUNNEL"], f"{username}{self.protocols['MAKE_TUNNEL_INPUT_SEPARATOR']}{connector_name}{self.protocols['MAKE_TUNNEL_INPUT_SEPARATOR']}{connector_password}")
+    # the 'connector' is the person whom 'username' connects to
+    def make_tunnel(self, username, connector_name):
+        self.send(self.protocols["MAKE_TUNNEL"], f"{username}{self.protocols['MAKE_TUNNEL_INPUT_SEPARATOR']}{connector_name}")
 
     def remove_tunnel(self, username, connector_name):
         self.send(self.protocols["REMOVE_TUNNEL"], f"{username}{self.protocols['REMOVE_TUNNEL_INPUT_SEPARATOR']}{connector_name}")
 
-    def tunnel_stream(self, data):
-        self.send(self.protocols['TUNNEL_STREAM'], data)
+    def tunnel_stream(self, name, data):
+        self.send(self.protocols['TUNNEL_STREAM'], f"{name}{self.protocols['TUNNEL_STREAM_NAME_DATA_SEPARATOR']}{data}")
 
-    def network_shutdown(self):
+    def make_restricted(self, username):
+        self.send(self.protocols["MAKE_RESTRICTED"], username)
 
-        self.send(self.protocols["DISCONNECT"], " ")
+    def make_unrestricted(self, username):
+        self.send(self.protocols["MAKE_UNRESTRICTED"], username)
 
+    def disconnect(self):
+        # revision needed
+        if self.main.username != None or self.main.username != "None":
+            self.send(self.protocols["DISCONNECT"], " ")
+        else:
+            return False
+
+    def shutdown(self):
         from os import _exit
         _exit(0)
 
@@ -101,8 +104,8 @@ class ControllerNetwork:
         while debug == True:
             inpt = input(":> ")
             if inpt == "exit":
-                self.network_shutdown()
+                self.shutdown()
 
 
 if __name__ == "__main__":
-    ControllerNetwork().main()
+    ControllerNetwork().connect()

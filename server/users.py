@@ -38,25 +38,27 @@ class Users:
 
         self.save_database()
 
-    def restricted(self, user_name):
+    def make_restricted(self, user_name):
         self.users[user_name]["restricted"] = True
 
-    def unrestricted(self, user_name):
+    def make_unrestricteded(self, user_name):
         self.users[user_name]["restricted"] = False
 
-    def make_user_online(self, user_name, user_connection_object):
+    def login(self, user_name, user_connection_object):
         self.users[user_name]["user_connection_object"] = user_connection_object
 
-    def make_user_offline(self, user_name):
+    def logoff(self, user_name):
         self.users[user_name]["user_connection_object"] = None
 
+    # TODO - when tunneling, the restricted mode requires the requestee to get prompted to accept the connection or decline it
+
     def make_tunnel(self, requester_name, requestee_name):
-        if self.is_user_online(requester_name) and self.is_user_online(requestee_name) and not self.users[requestee_name]["restricted"]:
+        if self.is_user_online(requestee_name) and not self.users[requestee_name]["restricted"]:
             self.users[requester_name]["tunneling_socket"] = self.users[requestee_name]["user_connection_object"]
             self.users[requestee_name]["tunneling_socket"] = self.users[requester_name]["user_connection_object"]
             return True
         else:
-            print("user offline or restricted... something somethinkg")
+            print("user offline or has restricted access")
             return False
 
     def remove_tunnel(self, requester_name, requestee_name):

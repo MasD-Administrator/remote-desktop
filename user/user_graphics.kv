@@ -17,20 +17,19 @@
             orientation: "vertical"
             padding: 70
 
-
-
-
             MDLabel:
+                id: connection_status_label
                 markup: True
                 font_size: "15sp"
-                text: "Connected to [b]1.1.1.1[/b] on port [b]1111[/b]"
+                text: " "
                 halign: "center"
                 size_hint: (1,.05)
 
             MDLabel:
+                id: username_label
                 markup: True
                 font_size: '25sp'
-                text: "Your username [b]NHLCOLPOS19[/b]"
+                text: "Your username [b]None[/b]"
                 halign: "center"
                 size_hint: (1, .1)
 
@@ -96,24 +95,29 @@
                     Label:
                         text: "Company"
                     TextInput:
+                        id: company_name_text_input
+                        max_text_length: 4
                         height: "30dp"
                         text_color: "white"
 
                     Label:
                         text: "Location"
                     TextInput:
+                        id: location_text_input
                         height: "30dp"
                         text_color: "white"
 
                     Label:
                         text: "Type"
                     TextInput:
+                        id: type_text_input
                         height: "30dp"
                         text_color: "white"
 
                     Label:
                         text: "Number"
                     TextInput:
+                        id: number_text_input
                         height: "30dp"
                         text_color: "white"
 
@@ -129,7 +133,9 @@
                         text: "[b]Restricted Mode[/b]"
 
                     MDSwitch:
+                        id: restriction_mode_switch
                         active: False
+                        icon_active: "check"
 
 
 
@@ -140,6 +146,13 @@
 
                 MDRectangleFlatButton:
                     text: "Save Username"
+                    on_press: root.save_username()
 
                 MDRectangleFlatButton:
                     text: "Save Restriction Mode"
+                    on_press: root.save_restriction_mode()
+
+
+            MDRectangleFlatButton:
+                text: "Save All"
+                on_press: on_press: root.save_all()
