@@ -38,11 +38,36 @@ class Users:
 
         self.save_database()
 
+    def change_username(self, current_username, new_username):
+        try:
+            data = self.users[current_username]
+            self.users.pop(current_username)
+            self.users[new_username] = data
+
+            self.save_database()
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+
     def make_restricted(self, user_name):
-        self.users[user_name]["restricted"] = True
+        try:
+            self.users[user_name]["restricted"] = True
+            self.save_database()
+            return True
+        except Exception as e:
+            print(e)
+            return False
 
     def make_unrestricteded(self, user_name):
-        self.users[user_name]["restricted"] = False
+        try:
+            self.users[user_name]["restricted"] = False
+            self.save_database()
+            return True
+        except Exception as e:
+            print(e)
+            return False
 
     def login(self, user_name, user_connection_object):
         self.users[user_name]["user_connection_object"] = user_connection_object

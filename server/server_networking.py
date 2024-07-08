@@ -45,7 +45,6 @@ class ServerNetwork:
             if msg_length:
                 msg_length = int(msg_length)
                 msg = client.recv(msg_length).decode(self.FORMAT)
-
                 self.protocol_check(msg, client)
 
     def protocol_check(self, message: str, user):
@@ -60,10 +59,9 @@ class ServerNetwork:
         elif protocol == self.protocols["ADD_USER"]:
             if self.users.add_user(data, False):
                 self.users.login(data, user)
-                # send(success)
+                self.send(self.protocols["ADD_USER"], True, user)
             else:
-                ...
-                # send(failure)
+                self.send(self.protocols["ADD_USER"], False, user)
 
         elif protocol == self.protocols["DELETE_USER"]:
             self.users.delete_user(data)
@@ -75,10 +73,18 @@ class ServerNetwork:
             self.users.logoff(data)
 
         elif protocol == self.protocols["MAKE_RESTRICTED"]:
-            self.users.make_restricted(data)
+            made_restricted = self.users.make_restricted(data)
+            if made_restricted:
+                self.send(self.protocols["MAKE_RESTRICTED"], True, user)
+            elif not made_restricted:
+                self.send(self.protocols["MAKE_RESTRICTED"], False, user)
 
         elif protocol == self.protocols["MAKE_UNRESTRICTED"]:
-            self.users.make_unrestricteded(data)
+            made_unrestricted = self.users.make_unrestricteded(data)
+            if made_unrestricted:
+                self.send(self.protocols["MAKE_UNRESTRICTED"], True, user)
+            elif not made_unrestricted:
+                self.send(self.protocols["MAKE_UNRESTRICTED"], False, user)
 
         elif protocol == self.protocols["MAKE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["MAKE_TUNNEL_INPUT_SEPARATOR"])
@@ -89,11 +95,17 @@ class ServerNetwork:
             self.users.remove_tunnel(requester_name, requestee_name)
 
         elif protocol == self.protocols["TUNNEL_STREAM"]:
-
             username, send_data = data.split(self.protocols["TUNNEL_STREAM_NAME_DATA_SEPARATOR"])
-            self.send(send_data, self.users.users[username]["tunneling_socket"])
+            self.send(self.protocols["TUNNEL_STREAM"], data, self.users.users[username]["tunneling_socket"])
 
-    def send(self, msg, client_connection_object):
+        elif protocol == self.protocols["CHANGE_USERNAME"]:
+            current_username, new_username = data.split(self.protocols["CHANGE_USERNAME_SEPARATOR"])
+            result = self.users.change_username(current_username, new_username)
+
+            self.send(self.protocols["CHANGE_USERNAME"], result, user)
+    def send(self, protocol, data , client_connection_object):
+        print("sent: " + str(protocol) + str(data))
+        msg = f"{protocol}{self.protocols["PROTOCOL_MESSAGE_SPLITTER"]}{data}"
         message = msg.encode(self.FORMAT)
         msg_length = len(msg)
         send_length = str(msg_length).encode(self.FORMAT)

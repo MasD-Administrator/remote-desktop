@@ -8,6 +8,9 @@ class ControllerNetwork:
     def __init__(self, main):
         self.main = main
 
+        self.logged_in = False
+        self.connected = False
+
     def setup(self):
         with open("../protocols.json") as file:
             self.protocols = json.load(file)
@@ -27,50 +30,55 @@ class ControllerNetwork:
                 self.SERVER_IP = None
 
 
-
     def connect(self):
         try:
             self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client.connect((self.SERVER_IP, self.SERVER_PORT))
 
+            self.connected = True
             # self.test_code()
         except ConnectionRefusedError:
             return False
 
     def receive_data(self):
-        msg_length = self.client.recv(self.HEADER).decode(self.FORMAT)
-        if msg_length:
-            msg_length = int(msg_length)
-            msg = self.client.recv(msg_length).decode(self.FORMAT)
+        while self.connected:
+            msg_length = self.client.recv(self.HEADER).decode(self.FORMAT)
+            if msg_length:
+                msg_length = int(msg_length)
+                msg = self.client.recv(msg_length).decode(self.FORMAT)
 
-            print(msg)
-            # TODO this is where protocol check should be
+                # TODO this is where protocol check should be
+                protocol, data = msg.split(self.protocols["PROTOCOL_MESSAGE_SPLITTER"])
+                self.main.protocol_check(protocol, data)
 
     def send(self, protocol, data):
         try:
             # TODO for debug purposes data is type casted into a string
-            msg = protocol + self.protocols["PROTOCOL_MESSAGE_SPLITTER"] + str(data)
+            msg = protocol + self.protocols["PROTOCOL_MESSAGE_SPLITTER"] + data
             message = msg.encode(self.FORMAT)
             msg_length = len(msg)
             send_length = str(msg_length).encode(self.FORMAT)
             send_length += b" " * (self.HEADER - len(send_length))
             self.client.send(send_length)
             self.client.send(message)
-        except OSError:
-            print("os error")
-            self.main.inform("Cannot send messages whilst not connected!")
+        except Exception as e:
+            self.main.inform(str(e))
 
     def make_user(self, username):
         self.send(self.protocols["ADD_USER"], username)
 
+    def change_username(self, current_username, new_username):
+        self.send(self.protocols["CHANGE_USERNAME"], f"{current_username}{self.protocols['CHANGE_USERNAME_SEPARATOR']}{new_username}")
     def delete_user(self, username):
         self.send(self.protocols["DELETE_USER"], username)
 
     def login(self, username):
         self.send(self.protocols["LOG_IN"], username)
+        self.logged_in = True
 
     def logout(self, username):
-        self.send(self.protocols["LOG_OUT"], username)
+        if self.logged_in:
+            self.send(self.protocols["LOG_OUT"], username)
 
     # the 'connector' is the person whom 'username' connects to
     def make_tunnel(self, username, connector_name):
@@ -89,23 +97,6 @@ class ControllerNetwork:
         self.send(self.protocols["MAKE_UNRESTRICTED"], username)
 
     def disconnect(self):
+        self.connected = False
         # revision needed
-        if self.main.username != None or self.main.username != "None":
-            self.send(self.protocols["DISCONNECT"], " ")
-        else:
-            return False
-
-    def shutdown(self):
-        from os import _exit
-        _exit(0)
-
-    def input_check(self):
-        debug = True
-        while debug == True:
-            inpt = input(":> ")
-            if inpt == "exit":
-                self.shutdown()
-
-
-if __name__ == "__main__":
-    ControllerNetwork().connect()
+        self.send(self.protocols["DISCONNECT"], " ")

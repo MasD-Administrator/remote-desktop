@@ -125,14 +125,16 @@
                     size_hint_y: 1
 
                 BoxLayout:
-                    orientation: "horizontal"
+                    orientation: "vertical"
                     size_hint: (.45, .4)
+                    padding: -30
                     Label:
                         markup: True
                         font_size: "20dp"
                         text: "[b]Restricted Mode[/b]"
 
                     MDSwitch:
+                        pos_hint: {"center_x": .4}
                         id: restriction_mode_switch
                         active: False
                         icon_active: "check"
@@ -154,5 +156,5 @@
 
 
             MDRectangleFlatButton:
-                text: "Save All"
+                text: "Save All(dev)"
                 on_press: on_press: root.save_all()

@@ -3,6 +3,10 @@ from kivy.lang import Builder
 
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.clock import mainthread
+from kivy.config import Config
+
+
 from kivymd.uix.list.list import TwoLineIconListItem, IconLeftWidget
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDRectangleFlatButton
@@ -16,12 +20,12 @@ class MainScreen(Screen):
 class SettingsScreen(Screen):
     main = None
     def save_username(self):
-        ...
+        self.main.save_username_setting()
 
     def save_restriction_mode(self):
-        self.main.save_restriction_mode()
+        self.main.save_restriction_mode_setting()
     def save_all(self):
-        ...
+        self.main.save_all_settings()
 
 
 class MasDController(MDApp):
@@ -29,8 +33,11 @@ class MasDController(MDApp):
 
     def __init__(self, main):
         super().__init__()
-        Window.size = (800, 450)
-        Window.maximize()
+
+        Config.set('kivy', 'exit_on_escape', '0')
+
+        # Window.size = (800, 450)
+        # Window.maximize()
         Window.minimum_width = 450
         Window.minimum_height = 600
 
@@ -46,8 +53,10 @@ class MasDController(MDApp):
         self.settings_screen.main = main
         self.main_screen.main = main
 
-        self.screen_manager.add_widget(self.settings_screen)
         self.screen_manager.add_widget(self.main_screen)
+        self.screen_manager.add_widget(self.settings_screen)
+
+        self.settings_screen.ids.restriction_mode_switch.active = self.main.restriction_mode
 
         for i in range(0, 10):
             item = TwoLineIconListItem()
@@ -62,10 +71,10 @@ class MasDController(MDApp):
 
         return self.screen_manager
 
+    @mainthread
     def open_dialog(self, msg):
         if not self.dialog:
             self.dialog = MDDialog(
-                text=msg,
                 buttons=[
                     MDRectangleFlatButton(
                         text="Okay",
@@ -75,10 +84,8 @@ class MasDController(MDApp):
                     ),
                 ],
             )
+        self.dialog.text = msg
         self.dialog.open()
-
-    def dialog_close(self, *args):
-        self.dialog.dismiss(force=True)
 
     def on_stop(self):
         self.main.stop()
