@@ -91,6 +91,10 @@ class Users:
         else:
             return "User doesn't exist"
 
+    def make_forced_tunnel(self, requester_name, requestee_name):
+        self.users[requester_name]["tunneling_socket"] = self.users[requestee_name]["user_connection_object"]
+        self.users[requestee_name]["tunneling_socket"] = self.users[requester_name]["user_connection_object"]
+
     def remove_tunnel(self, requester_name, requestee_name):
         self.users[requester_name]["tunneling_socket"] = None
         self.users[requestee_name]["tunneling_socket"] = None
@@ -119,3 +123,6 @@ class Users:
 
     def username_in_database(self, user_name):
         return user_name in self.users
+
+    def get_socket_of_user(self, user_name):
+        return self.users[user_name]["user_connection_object"]

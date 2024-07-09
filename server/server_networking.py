@@ -89,8 +89,11 @@ class ServerNetwork:
         elif protocol == self.protocols["MAKE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["MAKE_TUNNEL_INPUT_SEPARATOR"])
             result = self.users.make_tunnel(requester_name, requestee_name)
-            print(result)
-            self.send(self.protocols["MAKE_TUNNEL"], result, user)
+
+            if result == "User restricted":
+                self.send(self.protocols["CHOOSE_TUNNEL_CREATION"], requester_name, self.users.get_socket_of_user(requestee_name))
+            else:
+                self.send(self.protocols["MAKE_TUNNEL"], result, user)
 
         elif protocol == self.protocols["REMOVE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["REMOVE_TUNNEL_INPUT_SEPARATOR"])
@@ -105,7 +108,20 @@ class ServerNetwork:
             result = self.users.change_username(current_username, new_username)
 
             self.send(self.protocols["CHANGE_USERNAME"], result, user)
-    def send(self, protocol, data , client_connection_object):
+
+        # these two subsequent function are both continuation of make_tunnel initially
+        # based on the requestee inputs the functions depend
+        elif protocol == self.protocols["ACCEPTED_TUNNEL_CREATION"]:
+            original_requester_name, original_requestee_name = data.split(self.protocols["ORIGINAL_NAMES_SEPARATOR"])
+
+            self.users.make_forced_tunnel(original_requester_name, original_requestee_name)
+            self.send(self.protocols["MAKE_TUNNEL"], "True", self.users.get_socket_of_user(original_requester_name))
+
+        elif protocol == self.protocols["DECLINED_TUNNEL_CREATION"]:
+            original_requester = data
+            self.send(self.protocols["MAKE_TUNNEL"], "User declined your request", self.users.get_socket_of_user(original_requester))
+
+    def send(self, protocol, data, client_connection_object):
         print("sent: " + str(protocol) + str(data))
         msg = f"{protocol}{self.protocols["PROTOCOL_MESSAGE_SPLITTER"]}{data}"
         message = msg.encode(self.FORMAT)
@@ -115,18 +131,18 @@ class ServerNetwork:
         client_connection_object.send(send_length)
         client_connection_object.send(message)
 
-    def shutdown(self):
-        from os import _exit
-        _exit(0)
-
     # DEBUGGER
     def input_check(self):
-        debug = False
+        debug = True
         while debug == True:
-            inpt = input(":> ")
-            if inpt == "users":
-                for name in self.users.users:
-                    print(f"{name}: [is_online:{self.users.users[name]['is_online']}, has_active_tunnel:{self.users.users[name]['has_active_tunnel']}] ")
+            try:
+                inpt = input(":> ")
+                if inpt == "users":
+                    for name in self.users.users:
+                        print(f"{name}: [is_online:{self.users.users[name]['is_online']}, has_active_tunnel:{self.users.users[name]['has_active_tunnel']}] ")
+            except:
+                pass
+
 
 if __name__ == "__main__":
     ServerNetwork().main()
