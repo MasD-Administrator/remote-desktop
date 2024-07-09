@@ -88,7 +88,9 @@ class ServerNetwork:
 
         elif protocol == self.protocols["MAKE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["MAKE_TUNNEL_INPUT_SEPARATOR"])
-            self.users.make_tunnel(requester_name, requestee_name)
+            result = self.users.make_tunnel(requester_name, requestee_name)
+            print(result)
+            self.send(self.protocols["MAKE_TUNNEL"], result, user)
 
         elif protocol == self.protocols["REMOVE_TUNNEL"]:
             requester_name, requestee_name = data.split(self.protocols["REMOVE_TUNNEL_INPUT_SEPARATOR"])

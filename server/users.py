@@ -78,13 +78,18 @@ class Users:
     # TODO - when tunneling, the restricted mode requires the requestee to get prompted to accept the connection or decline it
 
     def make_tunnel(self, requester_name, requestee_name):
-        if self.is_user_online(requestee_name) and not self.users[requestee_name]["restricted"]:
-            self.users[requester_name]["tunneling_socket"] = self.users[requestee_name]["user_connection_object"]
-            self.users[requestee_name]["tunneling_socket"] = self.users[requester_name]["user_connection_object"]
-            return True
+        if self.username_in_database(requestee_name):
+            if self.is_user_online(requestee_name):
+                if not self.users[requestee_name]["restricted"]:
+                    self.users[requester_name]["tunneling_socket"] = self.users[requestee_name]["user_connection_object"]
+                    self.users[requestee_name]["tunneling_socket"] = self.users[requester_name]["user_connection_object"]
+                    return True
+                else:
+                    return "User restricted"
+            else:
+                return "User offline"
         else:
-            print("user offline or has restricted access")
-            return False
+            return "User doesn't exist"
 
     def remove_tunnel(self, requester_name, requestee_name):
         self.users[requester_name]["tunneling_socket"] = None

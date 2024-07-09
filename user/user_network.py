@@ -42,14 +42,17 @@ class ControllerNetwork:
 
     def receive_data(self):
         while self.connected:
-            msg_length = self.client.recv(self.HEADER).decode(self.FORMAT)
-            if msg_length:
-                msg_length = int(msg_length)
-                msg = self.client.recv(msg_length).decode(self.FORMAT)
+            try:
+                msg_length = self.client.recv(self.HEADER).decode(self.FORMAT)
+                if msg_length:
+                    msg_length = int(msg_length)
+                    msg = self.client.recv(msg_length).decode(self.FORMAT)
 
-                # TODO this is where protocol check should be
-                protocol, data = msg.split(self.protocols["PROTOCOL_MESSAGE_SPLITTER"])
-                self.main.protocol_check(protocol, data)
+                    protocol, data = msg.split(self.protocols["PROTOCOL_MESSAGE_SPLITTER"])
+                    self.main.protocol_check(protocol, data)
+            except ConnectionResetError:
+                self.main.connect()
+                exit()
 
     def send(self, protocol, data):
         try:
@@ -62,7 +65,7 @@ class ControllerNetwork:
             self.client.send(send_length)
             self.client.send(message)
         except Exception as e:
-            self.main.inform(str(e))
+            self.main.inform("Cannot send messages, not connected to a server!")
 
     def make_user(self, username):
         self.send(self.protocols["ADD_USER"], username)
@@ -80,7 +83,7 @@ class ControllerNetwork:
         if self.logged_in:
             self.send(self.protocols["LOG_OUT"], username)
 
-    # the 'connector' is the person whom 'username' connects to
+    # the 'connector' is the person whom 'username' connects to (aka requestee in the server code)
     def make_tunnel(self, username, connector_name):
         self.send(self.protocols["MAKE_TUNNEL"], f"{username}{self.protocols['MAKE_TUNNEL_INPUT_SEPARATOR']}{connector_name}")
 

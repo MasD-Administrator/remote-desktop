@@ -74,6 +74,12 @@ class Main:
                 self.local_save_user_data()
                 self.change_gui_data(self.username, self.restriction_mode)
 
+        if protocol == self.network.protocols["MAKE_TUNNEL"]:
+            if data == "True":
+                print("tunnel made")
+            else:
+                self.inform(data)
+
 
     def connect(self):
         connection_status = {}
@@ -94,6 +100,7 @@ class Main:
                 if self.username is not None:
                     self.network.login(self.username)
                 break
+
         self.set_switch_mode()
         self.change_connection_status_gui(connection_status)
 
@@ -124,6 +131,9 @@ class Main:
             elif " " in input:
                 self.inform("No spaces allowed")
                 return
+            elif "\t" in input:
+                self.inform("No tabs allowed")
+                return
             else:
                 username += input
 
@@ -134,9 +144,6 @@ class Main:
         else:
             self.network.change_username(self.username, username)
         self.username = username
-
-    def change_username(self):
-        pass
 
     def save_restriction_mode_setting(self):
         restricted_mode: bool = self.graphics.settings_screen.ids.restriction_mode_switch.active
@@ -159,11 +166,29 @@ class Main:
     def set_switch_mode(self):
         self.graphics.settings_screen.ids.restriction_mode_switch.active = self.restriction_mode
 
+    def make_tunnel(self, connector_username_text):
+        if connector_username_text != "":
+            if " " not in connector_username_text:
+                if "\t" not in connector_username_text:
+                    if connector_username_text != self.username:
+                        self.network.make_tunnel(self.username, connector_username_text)
+                    else:
+                        self.inform("Cannot enter your own username")
+                else:
+                    self.inform("No tabs allowed")
+            else:
+                self.inform("No spaces allowed")
+        else:
+            self.inform("Enter a username")
+
     def stop(self):
         self.network.logout(self.username)
         self.network.disconnect()
         from os import _exit
         _exit(0)
+
+    def restart(self):
+        pass
 
 
 if __name__ == "__main__":

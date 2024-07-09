@@ -16,20 +16,27 @@ from user_network import ControllerNetwork
 
 class MainScreen(Screen):
     main = None
+    def connect_btn_press(self):
+        username_text_input = self.ids.username_text_field.text
+        self.main.make_tunnel(username_text_input.upper())
 
 class SettingsScreen(Screen):
     main = None
-    def save_username(self):
+
+    def save_username_btn_press(self):
         self.main.save_username_setting()
 
-    def save_restriction_mode(self):
+    def save_restriction_mode_btn_press(self):
         self.main.save_restriction_mode_setting()
-    def save_all(self):
+    def save_all_btn_press(self):
         self.main.save_all_settings()
 
 
 class MasDController(MDApp):
     dialog = None
+
+    def restart(self):
+        MDApp.get_running_app().restart()
 
     def __init__(self, main):
         super().__init__()

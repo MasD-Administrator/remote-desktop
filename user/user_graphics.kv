@@ -39,6 +39,7 @@
                 size_hint: (1, 0.2)
 
                 MDTextField:
+                    id: username_text_field
                     mode: "rectangle"
                     max_text_length: 12
                     hint_text: "Username"
@@ -47,6 +48,7 @@
                     font_size: "15dp"
                     text: "Connect"
                     size_hint: (.3, .75)
+                    on_release: root.connect_btn_press()
 
             BoxLayout:
                 size_hint_y: .3
@@ -148,13 +150,13 @@
 
                 MDRectangleFlatButton:
                     text: "Save Username"
-                    on_press: root.save_username()
+                    on_press: root.save_username_btn_press()
 
                 MDRectangleFlatButton:
                     text: "Save Restriction Mode"
-                    on_press: root.save_restriction_mode()
+                    on_press: root.save_restriction_mode_btn_press()
 
 
             MDRectangleFlatButton:
                 text: "Save All(dev)"
-                on_press: on_press: root.save_all()
+                on_press: on_press: root.save_all_btn_press()
