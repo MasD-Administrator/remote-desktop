@@ -1,2 +1,4 @@
-/.git
-/.idea
+.git/
+.idea/
+_pychache__/
+venv/
