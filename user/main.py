@@ -123,7 +123,6 @@ class Main:
                 connection_status["port"] = self.network.SERVER_PORT
 
                 Thread(target=self.network.receive_continuous).start()
-
                 if self.username is not None:
                     self.network.request_login(self.username)
                 break
@@ -184,7 +183,11 @@ class Main:
             self.network.request_make_new_user(username)
         else:
             self.network.request_change_username(self.username, username)
-        self.username = username
+
+        if self.network.connected_to_server:
+            self.username = username
+        else:
+            self.username = self.username
 
     def save_restriction_mode_setting(self):
         restricted_mode: bool = self.graphics.settings_screen.ids.restriction_mode_switch.active

@@ -35,6 +35,7 @@ class ControllerNetwork:
 
                 self.main.protocol_check(protocol)
         except ConnectionResetError:
+            self.connected_to_server = False
             self.main.connect()
 
     def receive(self):
@@ -51,6 +52,7 @@ class ControllerNetwork:
 
             self.connected_to_server = True
         except ConnectionRefusedError:
+            self.connected_to_server = False
             return False
 
     def send(self, data):
