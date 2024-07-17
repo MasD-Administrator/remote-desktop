@@ -2,17 +2,29 @@
 <MainScreen>:
     BoxLayout:
         orientation: "horizontal"
+        BoxLayout:
+            size: root.width, root.height
+            orientation: "vertical"
+            canvas:
+                Color:
+                    rgba: .129, .129 ,.129, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
 
-        MDNavigationRail:
+            size_hint_x: .095
+            padding: 50
+
             MDNavigationRailFabButton:
                 icon: "cog"
                 on_release:
                     root.manager.transition.direction = "left"
                     root.manager.current = "settings"
 
+            Widget:
+
         MDBoxLayout:
             user_list: user_list
-            size_hint_x: .8
 
             orientation: "vertical"
             padding: 70
@@ -65,15 +77,28 @@
 <SettingsScreen>:
     BoxLayout:
         orientation: "horizontal"
+        BoxLayout:
+            size: root.width, root.height
+            orientation: "vertical"
+            canvas:
+                Color:
+                    rgba: .129, .129 ,.129, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
 
-        MDNavigationRail:
+            size_hint_x: .095
+            padding: 50
+
             MDNavigationRailFabButton:
                 icon: "arrow-left-bold"
                 on_release:
                     root.manager.transition.direction = "right"
                     root.manager.current = "main"
 
-        # this is sort of the main layout excepting the navigation rail
+            Widget:
+
+        # this is sort of the main layout excepting the navigation rail(which i sort of made myself)
         BoxLayout:
             orientation: "horizontal"
             padding: 70
@@ -141,8 +166,6 @@
                         active: False
                         icon_active: "check"
 
-
-
             GridLayout:
                 spacing: 20
                 cols: 3
@@ -158,5 +181,42 @@
 
 
             MDRectangleFlatButton:
-                text: "Save All(dev)"
+                text: "(dev)"
                 on_press: on_press: root.save_all_btn_press()
+
+
+<RemoteDesktopScreen>:
+
+    BoxLayout:
+        orientation: "horizontal"
+
+        BoxLayout:
+            size: root.width, root.height
+            orientation: "vertical"
+            canvas:
+                Color:
+                    rgba: .129, .129 ,.129, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+            size_hint_x: .095
+            padding: 50
+            spacing: 30
+
+            MDNavigationRailFabButton:
+                icon: "cancel"
+                on_release:
+                    root.manager.transition.direction = "right"
+                    root.manager.current = "main"
+
+            MDIconButton:
+                icon: "folder"
+                pos_hint: {"center_x":.5}
+
+            Widget:
+
+
+        Image:
+            id : remote_desktop_image
+

@@ -1,5 +1,5 @@
 import json
-
+import protocols
 
 class Users:
     def __init__(self):
@@ -10,19 +10,22 @@ class Users:
             data = json.load(database)
 
             for user in list(data.keys()):
-                self.add_user(user, data[user])
+                self.make_new_user(user, data[user])
 
-    def add_user(self, user_name, restricted_mode):
+    # The reason for getting restricted mode as an argument is because it's saved in the database therefore needs to be
+    # re-initialized at the beginning.
+    def make_new_user(self, user_name, restricted_mode):
 
         username_in_database = self.username_in_database(user_name)
 
         if not username_in_database:
             self.users[user_name] = {
                 "user_connection_object": None,
-                "tunneling_socket": None,
+                "tunneling_socket_object": None,
                 "restricted": restricted_mode
             }
             self.save_database()
+            self.login(user_name, self.get_socket_of_user(user_name))
             return True
         elif username_in_database:
             self.save_database()
@@ -32,11 +35,11 @@ class Users:
         username_in_database = self.username_in_database(user_name)
         if username_in_database:
             self.users.pop(user_name)
+            self.save_database()
+            return True
         else:
-            print("user not in database")
+            self.save_database()
             return False
-
-        self.save_database()
 
     def change_username(self, current_username, new_username):
         try:
@@ -60,7 +63,7 @@ class Users:
             print(e)
             return False
 
-    def make_unrestricteded(self, user_name):
+    def make_unrestricted(self, user_name):
         try:
             self.users[user_name]["restricted"] = False
             self.save_database()
@@ -72,32 +75,30 @@ class Users:
     def login(self, user_name, user_connection_object):
         self.users[user_name]["user_connection_object"] = user_connection_object
 
-    def logoff(self, user_name):
+    def logout(self, user_name):
         self.users[user_name]["user_connection_object"] = None
-
-    # TODO - when tunneling, the restricted mode requires the requestee to get prompted to accept the connection or decline it
 
     def make_tunnel(self, requester_name, requestee_name):
         if self.username_in_database(requestee_name):
             if self.is_user_online(requestee_name):
                 if not self.users[requestee_name]["restricted"]:
-                    self.users[requester_name]["tunneling_socket"] = self.users[requestee_name]["user_connection_object"]
-                    self.users[requestee_name]["tunneling_socket"] = self.users[requester_name]["user_connection_object"]
+                    self.users[requester_name]["tunneling_socket_object"] = self.users[requestee_name]["user_connection_object"]
+                    self.users[requestee_name]["tunneling_socket_object"] = self.users[requester_name]["user_connection_object"]
                     return True
                 else:
-                    return "User restricted"
+                    return protocols.USER_RESTRICTED
             else:
-                return "User offline"
+                return protocols.USER_OFFLINE
         else:
-            return "User doesn't exist"
+            return protocols.USER_DOESNT_EXIST
 
     def make_forced_tunnel(self, requester_name, requestee_name):
-        self.users[requester_name]["tunneling_socket"] = self.users[requestee_name]["user_connection_object"]
-        self.users[requestee_name]["tunneling_socket"] = self.users[requester_name]["user_connection_object"]
+        self.users[requester_name]["tunneling_socket_object"] = self.users[requestee_name]["user_connection_object"]
+        self.users[requestee_name]["tunneling_socket_object"] = self.users[requester_name]["user_connection_object"]
 
     def remove_tunnel(self, requester_name, requestee_name):
-        self.users[requester_name]["tunneling_socket"] = None
-        self.users[requestee_name]["tunneling_socket"] = None
+        self.users[requester_name]["tunneling_socket_object"] = None
+        self.users[requestee_name]["tunneling_socket_object"] = None
 
     def is_user_online(self, user_name):
         if self.users[user_name]["user_connection_object"] is None:

@@ -3,18 +3,16 @@ import json
 
 from threading import Thread
 
+import protocols
 
 class ControllerNetwork:
     def __init__(self, main):
         self.main = main
 
         self.logged_in = False
-        self.connected = False
+        self.connected_to_server = False
 
     def setup(self):
-        with open("../protocols.json") as file:
-            self.protocols = json.load(file)
-
         with open("user_network_data.json") as controller_data_file:
             controller_data = json.load(controller_data_file)
 
@@ -29,77 +27,72 @@ class ControllerNetwork:
             elif type(controller_data["server_ip"]) is not str:
                 self.SERVER_IP = None
 
+    def receive_continuous(self):
+        try:
+            while self.connected_to_server:
+                msg_length = int(self.client.recv(self.HEADER).decode(self.FORMAT))
+                protocol = self.client.recv(msg_length).decode(self.FORMAT)
+
+                self.main.protocol_check(protocol)
+        except ConnectionResetError:
+            self.main.connect()
+
+    def receive(self):
+        if self.connected_to_server:
+            msg_length = int(self.client.recv(self.HEADER).decode(self.FORMAT))
+            message = self.client.recv(msg_length).decode(self.FORMAT)
+
+            return message
 
     def connect(self):
         try:
             self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client.connect((self.SERVER_IP, self.SERVER_PORT))
 
-            self.connected = True
-            # self.test_code()
+            self.connected_to_server = True
         except ConnectionRefusedError:
             return False
 
-    def receive_data(self):
-        while self.connected:
-            try:
-                msg_length = self.client.recv(self.HEADER).decode(self.FORMAT)
-                if msg_length:
-                    msg_length = int(msg_length)
-                    msg = self.client.recv(msg_length).decode(self.FORMAT)
-
-                    protocol, data = msg.split(self.protocols["PROTOCOL_MESSAGE_SPLITTER"])
-                    self.main.protocol_check(protocol, data)
-            except ConnectionResetError:
-                self.main.connect()
-                exit()
-
-    def send(self, protocol, data):
+    def send(self, data):
         try:
-            # TODO for debug purposes data is type casted into a string
-            msg = protocol + self.protocols["PROTOCOL_MESSAGE_SPLITTER"] + data
-            message = msg.encode(self.FORMAT)
-            msg_length = len(msg)
+            message = data.encode(self.FORMAT)
+            msg_length = len(data)
             send_length = str(msg_length).encode(self.FORMAT)
             send_length += b" " * (self.HEADER - len(send_length))
             self.client.send(send_length)
             self.client.send(message)
-        except Exception as e:
-            self.main.inform("Cannot send messages, not connected to a server!")
-
-    def make_user(self, username):
-        self.send(self.protocols["ADD_USER"], username)
-
-    def change_username(self, current_username, new_username):
-        self.send(self.protocols["CHANGE_USERNAME"], f"{current_username}{self.protocols['CHANGE_USERNAME_SEPARATOR']}{new_username}")
-    def delete_user(self, username):
-        self.send(self.protocols["DELETE_USER"], username)
-
-    def login(self, username):
-        self.send(self.protocols["LOG_IN"], username)
-        self.logged_in = True
-
-    def logout(self, username):
-        if self.logged_in:
-            self.send(self.protocols["LOG_OUT"], username)
-
-    # the 'connector' is the person whom 'username' connects to (aka requestee in the server code)
-    def make_tunnel(self, username, connector_name):
-        self.send(self.protocols["MAKE_TUNNEL"], f"{username}{self.protocols['MAKE_TUNNEL_INPUT_SEPARATOR']}{connector_name}")
-
-    def remove_tunnel(self, username, connector_name):
-        self.send(self.protocols["REMOVE_TUNNEL"], f"{username}{self.protocols['REMOVE_TUNNEL_INPUT_SEPARATOR']}{connector_name}")
-
-    def tunnel_stream(self, name, data):
-        self.send(self.protocols['TUNNEL_STREAM'], f"{name}{self.protocols['TUNNEL_STREAM_NAME_DATA_SEPARATOR']}{data}")
-
-    def make_restricted(self, username):
-        self.send(self.protocols["MAKE_RESTRICTED"], username)
-
-    def make_unrestricted(self, username):
-        self.send(self.protocols["MAKE_UNRESTRICTED"], username)
+        except WindowsError:
+            self.main.inform("Not connected to a server")
 
     def disconnect(self):
-        self.connected = False
-        # revision needed
-        self.send(self.protocols["DISCONNECT"], " ")
+        self.send(protocols.DISCONNECT)
+
+    def request_login(self, username):
+        self.send(protocols.LOG_IN_REQUEST)
+        self.send(username)
+
+    def request_logout(self, username):
+        self.send(protocols.LOG_OUT_REQUEST)
+        self.send(username)
+
+    def request_make_new_user(self, username):
+        self.send(protocols.MAKE_USER_REQUEST)
+        self.send(username)
+
+    def request_change_username(self, current_username, new_username):
+        self.send(protocols.CHANGE_USERNAME_REQUEST)
+        self.send(current_username)
+        self.send(new_username)
+
+    def request_make_restricted(self, username):
+        self.send(protocols.MAKE_RESTRICTED_REQUEST)
+        self.send(username)
+
+    def request_make_unrestricted(self, username):
+        self.send(protocols.MAKE_UNRESTRICTED_REQUEST)
+        self.send(username)
+
+    def make_tunnel(self, requester_name, requestee_name):
+        self.send(protocols.MAKE_TUNNEL_REQUEST)
+        self.send(requester_name)
+        self.send(requestee_name)
