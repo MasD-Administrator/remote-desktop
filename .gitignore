@@ -1,4 +1,7 @@
 .git/
 .idea/
-_pychache__/
+_pycache__/
 venv/
+networking_template/
+user-Copy/
+test/

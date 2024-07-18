@@ -2,5 +2,5 @@
   "port": 5050,
   "ip" : true,
   "format": "utf-8",
-  "header": 64
+  "header": 10
 }

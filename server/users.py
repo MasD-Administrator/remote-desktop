@@ -1,6 +1,7 @@
 import json
 import protocols
 
+
 class Users:
     def __init__(self):
         super().__init__()
@@ -127,3 +128,6 @@ class Users:
 
     def get_socket_of_user(self, user_name):
         return self.users[user_name]["user_connection_object"]
+
+    def get_tunnel_of_user(self, username):
+        return self.users[username]["tunneling_socket_object"]

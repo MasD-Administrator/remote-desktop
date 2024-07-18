@@ -114,14 +114,12 @@ class Main:
                 image_bytes = self.network.receive(mode="raw")
                 print(f"screen data recv: {len(image_bytes)}")
                 self.set_image(image_bytes)
-                self.network.tunnel_to_user(protocols.SCREEN_STREAM, "on")
-
 
     def set_image(self, image_bytes):
+        self.graphics.set_screen("remote_desktop")
         self.graphics.set_image(image_bytes)
 
     def start_screen_stream(self):
-        self.graphics.set_screen("remote_desktop")
         self.can_tunnel_screenshot = True
         Thread(target=self.tunnel_screenshot).start()
 
@@ -132,7 +130,7 @@ class Main:
         while self.can_tunnel_screenshot:
             screenshot = take_screenshot()
             image_byte_io = BytesIO()
-            screenshot.save(image_byte_io, format="jpeg", quality=10)
+            screenshot.save(image_byte_io, format="jpeg", quality=8)
             image_in_bytes = image_byte_io.getvalue()
 
             self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="raw")
