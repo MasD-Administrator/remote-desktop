@@ -2,6 +2,6 @@
 .idea/
 _pycache__/
 venv/
-networking_template/
-user-Copy/
+networking*template/
+user*-*Copy/
 test/
