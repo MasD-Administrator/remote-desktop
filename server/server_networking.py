@@ -44,24 +44,26 @@ class ServerNetwork:
         msg_length = len(data)
         send_length = str(msg_length).encode(self.FORMAT)
         send_length += b" " * (self.HEADER - len(send_length))
-        client_connection_object.send(send_length)
-        client_connection_object.send(data)
+        try:
+            client_connection_object.send(send_length)
+            client_connection_object.send(data)
+        except AttributeError:
+            print("Warning : cannot send")
 
     def handle_client(self, client):
         self.client = client
         self.client_connected = True
 
         while self.client_connected:
-            try:
-                msg_length = client.recv(self.HEADER)
-                msg_length = msg_length.decode(self.FORMAT)
-                if msg_length:
-                    msg_length = int(msg_length)
-                    protocol = client.recv(msg_length).decode(self.FORMAT)
+            msg_length = client.recv(self.HEADER)
+            msg_length = msg_length.decode(self.FORMAT)
+            if msg_length:
+                msg_length = int(msg_length)
+                protocol = client.recv(msg_length).decode(self.FORMAT)
 
-                    self.protocol_check(protocol, client)
-            except UnicodeDecodeError as e:
-                print(e)
+                print(f"msg len : {msg_length}\nmsg: {protocol}\n")
+
+                self.protocol_check(protocol, client)
 
     def receive(self, client, mode="coded"):
         if client is not None:
@@ -151,9 +153,9 @@ class ServerNetwork:
 
             self.server_tunnel(username, tunnel_protocol, data, mode="raw")
 
-        # elif protocol == self.protocols["REMOVE_TUNNEL"]:
-        #     requester_name, requestee_name = data.split(self.protocols["REMOVE_TUNNEL_INPUT_SEPARATOR"])
-        #     self.users.remove_tunnel(requester_name, requestee_name)
+        elif protocol == protocols.REMOVE_TUNNEL:
+            username = self.receive(user_socket)
+            self.users.remove_tunnel(username)
 
     def server_tunnel(self, username, tunneled_protocol, data, mode="coded"):
         tunnel_to = self.users.get_tunnel_of_user(username)

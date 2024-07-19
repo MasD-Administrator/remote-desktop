@@ -17,6 +17,7 @@ class Main:
             data = json.load(data_file)
             self.username = data["username"]
             self.restriction_mode = data["restriction_mode"]
+            self.screen_share_image_quality = data["screen_share_image_quality"]
 
         self.network = user_network.ControllerNetwork(self)
         self.graphics = user_graphics.MasDController(self)
@@ -33,7 +34,8 @@ class Main:
         with open("data.json", "w") as user_data_file:
             data = {
                 "username": self.username,
-                "restriction_mode": self.restriction_mode
+                "restriction_mode": self.restriction_mode,
+                "screen_share_image_quality": self.screen_share_image_quality
             }
             json.dump(data, user_data_file, indent=4)
 
@@ -95,54 +97,66 @@ class Main:
             elif result == protocols.USER_DECLINED_TUNNEL_REQEUST:
                 self.inform("User declined tunnel request")
 
-            elif result == protocols.USER_ACCEPTED_TUNNEL_REQEUST:
-                self.start_remote_desktop()
-            elif result == str(True):  # no barriers to enter
-                self.start_remote_desktop()
+            elif result == protocols.USER_ACCEPTED_TUNNEL_REQEUST or result == str(True):  # Tunnel made
+                self.start_remote_desktop_request()
 
         if protocol == protocols.TUNNELED:
             tunneled_protocol = self.network.receive()
 
-            if tunneled_protocol == protocols.SCREEN_STREAM:
+            if tunneled_protocol == protocols.START_REMOTE_DESKTOP:
+                _ = self.network.receive()
+                self.start_remote_desktop()
+
+            elif tunneled_protocol == protocols.STOP_REMOTE_DESKTOP:
+                _ = self.network.receive()
+                self.stop_remote_desktop()
+
+            elif tunneled_protocol == protocols.SEND_SCREEN:
                 request = self.network.receive()
                 if request == "on":
-                    self.start_screen_stream()
-                elif request == "off":
-                    self.stop_screen_stream()
+                    self.send_screenshot_to_user()
+
 
             elif tunneled_protocol == protocols.SCREEN_DATA:  # An image received
                 image_bytes = self.network.receive(mode="raw")
-                print(f"screen data recv: {len(image_bytes)}")
                 self.set_image(image_bytes)
-                self.network.tunnel_to_user(protocols.SCREEN_STREAM, "on")
+            elif tunneled_protocol == protocols.CHANGE_SCREEN_STREAM_QUALITY:
+                quality_requested = self.network.receive()
+                self.set_screen_share_image_quality(quality_requested)
 
+    def start_remote_desktop_request(self):
+        self.network.tunnel_to_user(protocols.START_REMOTE_DESKTOP, "")
+        self.start_screen_share_request()
+
+    def stop_remote_desktop_request(self):
+        self.network.tunnel_to_user(protocols.STOP_REMOTE_DESKTOP, "")
+        self.stop_remote_desktop()
+
+    def start_screen_share_request(self):
+        self.graphics.set_screen("remote_desktop")
+        self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
+
+    def start_remote_desktop(self):
+        pass
+
+    def stop_remote_desktop(self):
+        self.network.send(protocols.REMOVE_TUNNEL)
+        self.network.send(self.username)
 
     def set_image(self, image_bytes):
         self.graphics.set_image(image_bytes)
+        self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
 
-    def start_screen_stream(self):
-        self.graphics.set_screen("remote_desktop")
-        self.can_tunnel_screenshot = True
-        Thread(target=self.tunnel_screenshot).start()
+    def set_screen_share_image_quality(self, quality):
+        self.screen_share_image_quality = int(quality)
 
-    def stop_screen_stream(self):
-        self.can_tunnel_screenshot = False
+    def send_screenshot_to_user(self):
+        screenshot = take_screenshot()
+        image_byte_io = BytesIO()
+        screenshot.save(image_byte_io, format="jpeg", quality=self.screen_share_image_quality)
+        image_in_bytes = image_byte_io.getvalue()
 
-    def tunnel_screenshot(self):
-        while self.can_tunnel_screenshot:
-            screenshot = take_screenshot()
-            image_byte_io = BytesIO()
-            screenshot.save(image_byte_io, format="jpeg", quality=10)
-            image_in_bytes = image_byte_io.getvalue()
-
-            self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="raw")
-            print(f"len of the sent image: {len(image_byte_io.getvalue())}")
-            self.can_tunnel_screenshot = False
-
-    def start_remote_desktop(self):
-        self.network.tunnel_to_user(protocols.SCREEN_STREAM, "on")
-        # self.network.tunnel_to_user(protocols.SCREEN_STREAM_STATUS, "off")
-
+        self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="raw")
 
     def connect(self):
         connection_status = {}

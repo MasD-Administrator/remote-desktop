@@ -207,6 +207,7 @@
             MDNavigationRailFabButton:
                 icon: "cancel"
                 on_release:
+                    root.stop_remote_desktop_btn_press()
                     root.manager.transition.direction = "right"
                     root.manager.current = "main"
 

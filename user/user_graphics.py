@@ -1,3 +1,5 @@
+import time
+
 from kivymd.app import MDApp
 from kivy.lang import Builder
 
@@ -18,13 +20,18 @@ from io import BytesIO
 class RemoteDesktopScreen(Screen):
     main = None
 
+    def stop_remote_desktop_btn_press(self):
+        self.main.stop_remote_desktop_request()
+
 
 class MainScreen(Screen):
     main = None
 
     def connect_btn_press(self):
+        print("this getting pressed")
         username_text_input = self.ids.username_text_field.text
         self.main.make_tunnel_request(username_text_input.upper())
+        print("this getting pressed")
 
 
 class SettingsScreen(Screen):

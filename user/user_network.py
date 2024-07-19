@@ -118,5 +118,6 @@ class ControllerNetwork:
 
     def make_tunnel(self, requester_name, requestee_name):
         self.send(protocols.MAKE_TUNNEL_REQUEST)
+        print("make tunnel request made")
         self.send(requester_name)
         self.send(requestee_name)

@@ -16,7 +16,6 @@ class Users:
     # The reason for getting restricted mode as an argument is because it's saved in the database therefore needs to be
     # re-initialized at the beginning.
     def make_new_user(self, user_name, restricted_mode):
-
         username_in_database = self.username_in_database(user_name)
 
         if not username_in_database:
@@ -26,7 +25,6 @@ class Users:
                 "restricted": restricted_mode
             }
             self.save_database()
-            self.login(user_name, self.get_socket_of_user(user_name))
             return True
         elif username_in_database:
             self.save_database()
@@ -74,9 +72,11 @@ class Users:
             return False
 
     def login(self, user_name, user_connection_object):
+        print(f"{user_name} logged in")
         self.users[user_name]["user_connection_object"] = user_connection_object
 
     def logout(self, user_name):
+        print(f"{user_name} logged out")
         self.users[user_name]["user_connection_object"] = None
 
     def make_tunnel(self, requester_name, requestee_name):
@@ -97,9 +97,9 @@ class Users:
         self.users[requester_name]["tunneling_socket_object"] = self.users[requestee_name]["user_connection_object"]
         self.users[requestee_name]["tunneling_socket_object"] = self.users[requester_name]["user_connection_object"]
 
-    def remove_tunnel(self, requester_name, requestee_name):
-        self.users[requester_name]["tunneling_socket_object"] = None
-        self.users[requestee_name]["tunneling_socket_object"] = None
+    def remove_tunnel(self, username):
+        print(f"remove tunnel of : {username}")
+        self.users[username]["tunneling_socket_object"] = None
 
     def is_user_online(self, user_name):
         if self.users[user_name]["user_connection_object"] is None:
@@ -107,12 +107,8 @@ class Users:
         else:
             return True
 
-    def users_status(self):
-        a = {}
-        for name in list(self.users.keys()):
-            a[name] = self.users[name]["is_online"]
-
-        return json.dumps(a, indent=4)
+    def username_in_database(self, user_name):
+        return user_name in self.users
 
     def save_database(self):
         with open("user_database.json", "w") as database:
@@ -122,9 +118,6 @@ class Users:
                 write_data[user] = self.users[user]["restricted"]
 
             json.dump(write_data, database, indent=4)
-
-    def username_in_database(self, user_name):
-        return user_name in self.users
 
     def get_socket_of_user(self, user_name):
         return self.users[user_name]["user_connection_object"]
