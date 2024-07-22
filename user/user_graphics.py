@@ -28,10 +28,8 @@ class MainScreen(Screen):
     main = None
 
     def connect_btn_press(self):
-        print("this getting pressed")
         username_text_input = self.ids.username_text_field.text
         self.main.make_tunnel_request(username_text_input.upper())
-        print("this getting pressed")
 
 
 class SettingsScreen(Screen):
@@ -56,10 +54,9 @@ class MasDController(MDApp):
 
         Config.set('kivy', 'exit_on_escape', '0')  # when I press esc of any other fn key it closes, this negates that
 
-        Window.minimum_width = 450
-        Window.minimum_height = 500
-
         Builder.load_file("user_graphics.kv")
+
+        Window.size = (800, 600)
 
         self.screen_manager = ScreenManager()
 
@@ -87,6 +84,12 @@ class MasDController(MDApp):
             item.secondary_text = "Offline"
             item.add_widget(IconLeftWidget(icon="account"))
             self.main_screen.ids.user_list.add_widget(item)
+
+    def on_mouse_enter(self):
+        self.main.mouse_entered(Window.mouse_pos)
+
+    def on_mouse_exit(self):
+        self.main.mouse_exited(Window.mouse_pos)
 
     @mainthread
     def set_screen(self, screen_name):

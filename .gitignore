@@ -1,7 +1,8 @@
-.git/
-.idea/
-_pycache__/
-venv/
-networking*template/
-user*-*Copy/
-test/
+.git
+.idea
+__pycache__
+venv
+networking*template
+user*-*Copy
+test
+test.txt

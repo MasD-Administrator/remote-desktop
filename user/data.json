@@ -1,5 +1,7 @@
 {
     "username": "NHLCOLPOS69",
     "restriction_mode": false,
-    "screen_share_image_quality": 8
+    "screen_share_image_quality": 8,
+    "screen_share_rate": 0,
+    "mouse_rate": 0.1
 }

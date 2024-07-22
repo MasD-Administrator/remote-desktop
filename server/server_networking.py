@@ -17,17 +17,18 @@ class ServerNetwork:
             self.HEADER = server_data["header"]
             self.FORMAT = server_data["format"]
 
-            if server_data["ip"] == True:
+            ip = server_data["ip"]
+            if ip == "localhost":
                 self.IP = socket.gethostbyname(socket.gethostname())
-            elif type(server_data["ip"]) is str:
-                self.IP = server_data["ip"]
             else:
-                self.IP = None
+                self.IP = ip
 
     def main(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.IP, self.PORT))
         self.server_socket.listen()
+
+        print(f"IP: {self.IP}\nPORT: {self.PORT}")
 
         while True:
             conn, addr = self.server_socket.accept()
@@ -60,9 +61,6 @@ class ServerNetwork:
             if msg_length:
                 msg_length = int(msg_length)
                 protocol = client.recv(msg_length).decode(self.FORMAT)
-
-                print(f"msg len : {msg_length}\nmsg: {protocol}\n")
-
                 self.protocol_check(protocol, client)
 
     def receive(self, client, mode="coded"):

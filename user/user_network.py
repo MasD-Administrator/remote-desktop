@@ -19,12 +19,11 @@ class ControllerNetwork:
             self.HEADER = controller_data["header"]
             self.FORMAT = controller_data["format"]
 
-            if controller_data["server_ip"]:
+            ip = controller_data["server_ip"]
+            if ip == "localhost":
                 self.SERVER_IP = socket.gethostbyname(socket.gethostname())
-            elif type(controller_data["server_ip"]) is str:
-                self.SERVER_IP = controller_data["server_ip"]
-            elif type(controller_data["server_ip"]) is not str:
-                self.SERVER_IP = None
+            else:
+                self.SERVER_IP = ip
 
     def receive_continuous(self):
         try:
@@ -75,17 +74,26 @@ class ControllerNetwork:
             self.main.can_tunnel_screenshot = False
             self.main.inform("Not connected to a server")
 
-    def tunnel_to_user(self, protocol,  data, mode="coded"):
+    def tunnel_to_user(self, protocol,  data, mode="coded", multiple=False):
         if mode == "coded":
             self.send(protocols.CODED_TUNNEL)
             self.send(self.main.username)
             self.send(protocol)
-            self.send(data)
+            if multiple is True:
+                for message in data:
+                    self.send(message)
+            else:
+                self.send(data)
+
         elif mode == "raw":
             self.send(protocols.RAW_TUNNEL)
             self.send(self.main.username)
             self.send(protocol)
-            self.send(data, mode="raw")
+            if multiple is True:
+                for message in data:
+                    self.send(message, mode="raw")
+            else:
+                self.send(data, mode="raw")
 
 
     def disconnect(self):
@@ -118,6 +126,5 @@ class ControllerNetwork:
 
     def make_tunnel(self, requester_name, requestee_name):
         self.send(protocols.MAKE_TUNNEL_REQUEST)
-        print("make tunnel request made")
         self.send(requester_name)
         self.send(requestee_name)
