@@ -21,7 +21,7 @@ class RemoteDesktopScreen(Screen):
     main = None
 
     def stop_remote_desktop_btn_press(self):
-        self.main.stop_remote_desktop_request()
+        self.main.C_stop_remote_desktop()
 
 
 class MainScreen(Screen):
@@ -52,12 +52,13 @@ class MasDController(MDApp):
     def __init__(self, main):
         super().__init__()
 
-        Config.set('kivy', 'exit_on_escape', '0')  # when I press esc of any other fn key it closes, this negates that
+        Config.set('kivy', 'exit_on_escape', '0')  # when I press esc of any other fn key it closes, this negates that.
+
+        # Window.bind(on_mouse_down=self.on_mouse_down)
+        # Window.bind(on_mouse_up=self.on_mouse_up)
+        # Window.bind(on_touch_down=self.on_touch_down)
 
         Builder.load_file("user_graphics.kv")
-
-        Window.size = (800, 600)
-
         self.screen_manager = ScreenManager()
 
         self.main = main
@@ -85,11 +86,20 @@ class MasDController(MDApp):
             item.add_widget(IconLeftWidget(icon="account"))
             self.main_screen.ids.user_list.add_widget(item)
 
-    def on_mouse_enter(self):
-        self.main.mouse_entered(Window.mouse_pos)
-
-    def on_mouse_exit(self):
-        self.main.mouse_exited(Window.mouse_pos)
+    # def on_touch_down(self, something, touch):
+    #     if touch.is_mouse_scrolling:
+    #         if touch.button == "scrolldown":
+    #             # up
+    #             self.main.C_scroll_up()
+    #         elif touch.button == 'scrollup':
+    #             # down
+    #             self.main.C_scroll_down()
+    #
+    # def on_mouse_down(self, window,  x, y, button, modifiers):
+    #     self.main.C_send_mouse_down(button)
+    #
+    # def on_mouse_up(self, window, x, y, button, modifiers):
+    #     self.main.C_send_mouse_up(button)
 
     @mainthread
     def set_screen(self, screen_name):
@@ -173,6 +183,8 @@ class MasDController(MDApp):
             )
         self.information_dialog.text = msg
         self.information_dialog.open()
+
+
 
     def on_stop(self):
         self.main.stop()

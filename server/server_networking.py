@@ -38,10 +38,23 @@ class ServerNetwork:
         # mode = coded, raw, string
         if mode == "string":
             data = str(data).encode(self.FORMAT)
-        if mode == "coded":
+        elif mode == "coded":
             data = data.encode(self.FORMAT)
-        if mode == "raw":
+        elif mode == "raw":
             data = data
+        elif mode == "sendall":
+            data = data
+            msg_length = len(data)
+            send_length = str(msg_length).encode(self.FORMAT)
+            send_length += b" " * (self.HEADER - len(send_length))
+            try:
+                client_connection_object.send(send_length)
+                client_connection_object.sendall(data)
+            except AttributeError:
+                print("Warning : cannot send")
+
+            return
+
         msg_length = len(data)
         send_length = str(msg_length).encode(self.FORMAT)
         send_length += b" " * (self.HEADER - len(send_length))
@@ -66,14 +79,24 @@ class ServerNetwork:
     def receive(self, client, mode="coded"):
         if client is not None:
             msg_length = client.recv(self.HEADER).decode(self.FORMAT)
+            msg_length = int(msg_length)
             if msg_length:
-                msg_length = int(msg_length)
-                msg = client.recv(msg_length)
                 if mode == "coded":
+                    msg = client.recv(msg_length)
                     msg = msg.decode(self.FORMAT)
+                    return msg
                 elif mode == "raw":
+                    msg = client.recv(msg_length)
                     msg = msg
-                return msg
+                    return msg
+                elif mode == "big":
+                    big_data = b""
+                    while len(big_data) < msg_length:
+                        packet = client.recv(msg_length - len(big_data))
+                        if not packet:
+                            break
+                        big_data += packet
+                    return big_data
 
     def protocol_check(self, protocol, user_socket):
         if protocol == protocols.DISCONNECT:
@@ -144,12 +167,12 @@ class ServerNetwork:
 
             self.server_tunnel(username, tunnel_protocol, data)
 
-        elif protocol == protocols.RAW_TUNNEL:
+        elif protocol == protocols.IMG_TUNNEL:
             username = self.receive(user_socket)
             tunnel_protocol = self.receive(user_socket)
-            data = self.receive(user_socket, mode="raw")
+            data = self.receive(user_socket, mode="big")
 
-            self.server_tunnel(username, tunnel_protocol, data, mode="raw")
+            self.server_tunnel(username, tunnel_protocol, data, mode="sendall")
 
         elif protocol == protocols.REMOVE_TUNNEL:
             username = self.receive(user_socket)
@@ -163,6 +186,8 @@ class ServerNetwork:
             self.send(data, tunnel_to)
         elif mode == "raw":
             self.send(data, tunnel_to, mode="raw")
+        elif mode == "sendall":
+            self.send(data, tunnel_to, mode="sendall")
 
     def make_new_user(self, username, user_socket):
         result = self.users.make_new_user(username, False)

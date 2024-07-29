@@ -40,13 +40,25 @@ class ControllerNetwork:
     def receive(self, mode="coded"):
         if self.connected_to_server:
             msg_length = int(self.client.recv(self.HEADER).decode(self.FORMAT))
-            message = self.client.recv(msg_length)
             if mode == "raw":
+                message = self.client.recv(msg_length)
                 message = message
+                return message
             elif mode == "coded":
+                message = self.client.recv(msg_length)
                 message = message.decode(self.FORMAT)
+                return message
 
-            return message
+            elif mode == "img":
+                print("img being sent here!!!")
+                image_data = b""
+                while len(image_data) < msg_length:
+                    packet = self.client.recv(msg_length - len(image_data))
+                    if not packet:
+                        break
+                    image_data += packet
+                print("img sent done")
+                return image_data
 
 
     def connect(self):
@@ -55,7 +67,7 @@ class ControllerNetwork:
             self.client.connect((self.SERVER_IP, self.SERVER_PORT))
 
             self.connected_to_server = True
-        except ConnectionRefusedError:
+        except ConnectionRefusedError or TimeoutError:
             self.connected_to_server = False
             return False
 
@@ -63,37 +75,35 @@ class ControllerNetwork:
         try:
             if mode == "coded":
                 data = data.encode(self.FORMAT)
-            elif mode == "raw":
+                msg_length = len(data)
+                send_length = str(msg_length).encode(self.FORMAT)
+                send_length += b" " * (self.HEADER - len(send_length))
+                self.client.send(send_length)
+                self.client.send(data)
+            elif mode == "img":
                 data = data
-            msg_length = len(data)
-            send_length = str(msg_length).encode(self.FORMAT)
-            send_length += b" " * (self.HEADER - len(send_length))
-            self.client.send(send_length)
-            self.client.send(data)
+                msg_length = len(data)
+                send_length = str(msg_length).encode(self.FORMAT)
+                send_length += b" " * (self.HEADER - len(send_length))
+                self.client.send(send_length)
+                self.client.sendall(data)
+
         except WindowsError:
             self.main.can_tunnel_screenshot = False
             self.main.inform("Not connected to a server")
 
-    def tunnel_to_user(self, protocol,  data, mode="coded", multiple=False):
+    def tunnel_to_user(self, protocol,  data, mode="coded"):
         if mode == "coded":
             self.send(protocols.CODED_TUNNEL)
             self.send(self.main.username)
             self.send(protocol)
-            if multiple is True:
-                for message in data:
-                    self.send(message)
-            else:
-                self.send(data)
+            self.send(data)
 
-        elif mode == "raw":
-            self.send(protocols.RAW_TUNNEL)
+        elif mode == "img":
+            self.send(protocols.IMG_TUNNEL)
             self.send(self.main.username)
             self.send(protocol)
-            if multiple is True:
-                for message in data:
-                    self.send(message, mode="raw")
-            else:
-                self.send(data, mode="raw")
+            self.send(data, mode="img")
 
 
     def disconnect(self):

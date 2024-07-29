@@ -4,7 +4,7 @@ from math import ceil
 from threading import Thread
 from io import BytesIO
 
-from pyautogui import moveTo
+from pynput.mouse import Controller, Button
 from pyautogui import size as screen_size
 from PIL.ImageGrab import grab as take_screenshot
 
@@ -31,11 +31,15 @@ class Main:
 
         self.network.setup()
 
+        self.mouse_controller = Controller()
+
         self.change_gui_data(self.username, self.restriction_mode)
 
+        # Globals
+        self.in_remote_desktop_session = False
+
         Thread(target=self.connect).start()
-        # kivy.run() is a thread by itself so no need to make it a separate one
-        self.graphics.run()
+        self.graphics.run()  # kivy.run() is a thread by itself so no need to make it a separate one
 
     def local_save_user_data(self):
         with open("data.json", "w") as user_data_file:
@@ -107,110 +111,178 @@ class Main:
                 self.inform("User declined tunnel request")
 
             elif result == protocols.USER_ACCEPTED_TUNNEL_REQEUST or result == str(True):  # Tunnel made
-                self.start_remote_desktop_controller()
+                self.C_start_remote_desktop()
 
         if protocol == protocols.TUNNELED:
             tunneled_protocol = self.network.receive()
 
             if tunneled_protocol == protocols.START_REMOTE_DESKTOP:
                 _ = self.network.receive()
-                self.start_remote_desktop_host()
+                self.H_start_remote_desktop()
             elif tunneled_protocol == protocols.STOP_REMOTE_DESKTOP:
                 _ = self.network.receive()
-                self.stop_remote_desktop_host()
+                self.H_stop_remote_desktop()
             elif tunneled_protocol == protocols.SEND_SCREEN:
                 request = self.network.receive()
                 if request == "on":
-                    self.send_screenshot_to_user_host()
-            elif tunneled_protocol == protocols.MOUSE_POS:
-                mouse_pos_x = self.network.receive()
-                mouse_pos_y = self.network.receive()
-                moveTo(mouse_pos_x, mouse_pos_y)
+                    self.H_send_screenshot_to_user()
+
             elif tunneled_protocol == protocols.SCREEN_DATA:  # An image received
-                image_bytes = self.network.receive(mode="raw")
-                self.set_image_controller(image_bytes)
+                image_bytes = self.network.receive(mode="img")
+                self.C_set_image(image_bytes)
+
             elif tunneled_protocol == protocols.CHANGE_SCREEN_STREAM_QUALITY:
                 quality_requested = self.network.receive()
-                self.set_screen_share_image_quality(quality_requested)
+                self.H_set_screen_share_image_quality(quality_requested)
 
             elif tunneled_protocol == protocols.SCREEN_SIZE:
                 self.host_x_size, self.host_y_size = self.network.receive().split(protocols.DATA_SPLITTER)
-                Thread(target=self.send_mouse_pos).start()
+                # Thread(target=self.C_send_mouse_pos).start()
+                # TODO add the above later
 
             elif tunneled_protocol == protocols.MOUSE_POS:
                 x, y = self.network.receive().split(protocols.DATA_SPLITTER)
-                self.set_mouse(int(x), int(y))
+                self.H_set_mouse(x, y)
 
-    def set_mouse(self, x, y):
-        moveTo(x, y)
+            elif tunneled_protocol == protocols.MOUSE_DOWN:
+                button = self.network.receive() 
+                self.H_mouse_down(button)
 
-    def start_remote_desktop_controller(self):
-        self.in_remote_desktop_session = True
-        self.network.tunnel_to_user(protocols.START_REMOTE_DESKTOP, " ")
-        self.start_screen_share_controller()
+            elif tunneled_protocol == protocols.MOUSE_UP:
+                button = self.network.receive()
+                self.H_mouse_up(button)
 
-    def stop_remote_desktop_request(self):
-        self.in_remote_desktop_session = False
-        self.network.tunnel_to_user(protocols.STOP_REMOTE_DESKTOP, " ")
-        self.stop_remote_desktop_host()
+            elif tunneled_protocol == protocols.MOUSE_SCROLL:
+                direction = self.network.receive()
+                if direction == "up":
+                    self.H_scroll_up()
+                elif direction == "down":
+                    self.H_scroll_down()
 
-    def start_screen_share_controller(self):
+    def C_scroll_up(self):
+        if self.in_remote_desktop_session:
+            self.network.tunnel_to_user(protocols.MOUSE_SCROLL, "up")
+
+    def C_scroll_down(self):
+        if self.in_remote_desktop_session:
+            self.network.tunnel_to_user(protocols.MOUSE_SCROLL, "down")
+
+    def H_scroll_up(self):
+        self.mouse_controller.scroll(0, 1)
+
+    def H_scroll_down(self):
+        self.mouse_controller.scroll(0, -1)
+
+    # TODO for now dont need to add modifiers but will have to soon
+
+    def H_mouse_up(self, button):
+        click_button = None
+        if button == "left":
+            click_button = Button.left
+        elif button == "right":
+            click_button = Button.right
+        elif button == "middle":
+            click_button = Button.middle
+        self.mouse_controller.release(click_button)
+
+    def H_mouse_down(self, button):
+
+        click_button = None
+        if button == "left":
+            click_button = Button.left
+        elif button == "right":
+            click_button = Button.right
+        elif button == "middle":
+            click_button = Button.middle
+        self.mouse_controller.press(click_button)
+
+    def H_set_mouse(self, x, y):
+        x = int(x)
+        y = int(y)
+        # self.mouse_controller.position = (x, y)
+
+    def C_send_mouse_down(self, button):
+        if self.in_remote_desktop_session:
+            self.network.tunnel_to_user(protocols.MOUSE_DOWN, button)
+
+    def C_send_mouse_up(self, button):
+        if self.in_remote_desktop_session:
+            self.network.tunnel_to_user(protocols.MOUSE_UP, button)
+
+    def C_send_mouse_pos(self):
         self.graphics.set_screen("remote_desktop")
-        self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
-
-    def start_remote_desktop_host(self):
-        x,y = screen_size()
-        self.network.tunnel_to_user(protocols.SCREEN_SIZE, f"{x}{protocols.DATA_SPLITTER}{y}")
-
-    def stop_remote_desktop_host(self):
-        self.network.send(protocols.REMOVE_TUNNEL)
-        self.network.send(self.username)
-
-    def set_image_controller(self, image_bytes):
-        self.graphics.set_image(image_bytes)
-        self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
-
-    def set_screen_share_image_quality(self, quality):
-        self.screen_share_image_quality = int(quality)
-
-    def set_screen_share_rate(self, rate):
-        self.screen_share_rate = rate
-
-    def set_mouse_pos_send_rate(self, rate):
-        self.mouse_send_rate = rate
-
-    def send_mouse_pos(self):
-        self.graphics.set_screen("remote_desktop")
-        while True:
-            send_x, send_y = self.convert_img_to_screen_coordinates(Window.mouse_pos)
+        while self.in_remote_desktop_session:
+            x, y = Window.mouse_pos
+            send_x, send_y = self.convert_img_to_screen_coordinates(x, y)
 
             self.network.tunnel_to_user(protocols.MOUSE_POS, f"{send_x}{protocols.DATA_SPLITTER}{send_y}")
             sleep(self.mouse_send_rate)
 
-    def convert_img_to_screen_coordinates(self, pos):
-        window_size = Window.size
-        self.nav_rail_width = ceil(self.graphics.remote_desktop_screen.ids.nav_rail.width)
+    def C_start_remote_desktop(self):
+        self.in_remote_desktop_session = True
+        self.network.tunnel_to_user(protocols.START_REMOTE_DESKTOP, " ")
+        self.C_start_screen_share()
 
-        x = (pos[0] - self.nav_rail_width)
-        y = -1 * (pos[1] - window_size[1])  # y
-        if x <= 0: x = 0
+        # Thread(target=self.C_send_key).start()
+        # TODO start the above
 
-        ratio_x = self.host_x_size / (window_size[0] - self.nav_rail_width)
-        ratio_y = self.host_y_size / window_size[1]
+    def C_send_key(self):
+        if self.in_remote_desktop_session:
+            ...
 
-        converted_x = ceil(x * ratio_x)
-        converted_y = ceil(y * ratio_y)
-        return (converted_x, converted_y)
+    def C_start_screen_share(self):
+        self.graphics.set_screen("remote_desktop")
+        self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
 
+    def H_start_remote_desktop(self):
+        x, y = screen_size()
+        self.network.tunnel_to_user(protocols.SCREEN_SIZE, f"{x}{protocols.DATA_SPLITTER}{y}")
 
-    def send_screenshot_to_user_host(self):
+    def C_stop_remote_desktop(self):
+        self.in_remote_desktop_session = False
+        self.network.tunnel_to_user(protocols.STOP_REMOTE_DESKTOP, " ")
+        self.H_stop_remote_desktop()
+
+    def H_stop_remote_desktop(self):
+        self.network.send(protocols.REMOVE_TUNNEL)
+        self.network.send(self.username)
+
+    def C_set_image(self, image_bytes):
+        self.graphics.set_image(image_bytes)
+        self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
+
+    def H_send_screenshot_to_user(self):
         screenshot = take_screenshot()
         image_byte_io = BytesIO()
         screenshot.save(image_byte_io, format="jpeg", quality=self.screen_share_image_quality)
         image_in_bytes = image_byte_io.getvalue()
 
-        self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="raw")
+        self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="img")
         sleep(self.screen_share_rate)
+
+    def H_set_screen_share_image_quality(self, quality):
+        self.screen_share_image_quality = int(quality)
+
+    def H_set_screen_share_rate(self, rate):
+        self.screen_share_rate = rate
+
+    def H_set_mouse_pos_send_rate(self, rate):
+        self.mouse_send_rate = rate
+
+    def convert_img_to_screen_coordinates(self, x, y):
+        window_size = Window.size
+        nav_rail_width = ceil(self.graphics.remote_desktop_screen.ids.nav_rail.width)
+
+        x = (x - nav_rail_width)
+        y = -1 * (y - window_size[1])  # y
+        if x <= 0: x = 0
+
+        ratio_x = int(self.host_x_size) / (window_size[0] - nav_rail_width)
+        ratio_y = int(self.host_y_size) / window_size[1]
+
+        converted_x = ceil(x * ratio_x)
+        converted_y = ceil(y * ratio_y)
+        return converted_x, converted_y
 
     def connect(self):
         connection_status = {}
