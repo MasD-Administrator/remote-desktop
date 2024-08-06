@@ -2,7 +2,7 @@ import socket
 import json
 
 import protocols
-
+from buffer import Buffer
 
 class ControllerNetwork:
     def __init__(self, main):
@@ -18,6 +18,11 @@ class ControllerNetwork:
             self.SERVER_PORT = controller_data["server_port"]
             self.HEADER = controller_data["header"]
             self.FORMAT = controller_data["format"]
+
+            self.tick = controller_data["tick"]
+
+            # Globals
+            self.is_streaming = False
 
             ip = controller_data["server_ip"]
             if ip == "localhost":
@@ -50,14 +55,12 @@ class ControllerNetwork:
                 return message
 
             elif mode == "img":
-                print("img being sent here!!!")
                 image_data = b""
                 while len(image_data) < msg_length:
                     packet = self.client.recv(msg_length - len(image_data))
                     if not packet:
                         break
                     image_data += packet
-                print("img sent done")
                 return image_data
 
 
@@ -67,30 +70,39 @@ class ControllerNetwork:
             self.client.connect((self.SERVER_IP, self.SERVER_PORT))
 
             self.connected_to_server = True
-        except ConnectionRefusedError or TimeoutError:
+            self.network_send("init")
+
+            self.buffer = Buffer(self)
+
+        except (TimeoutError, ConnectionRefusedError):
             self.connected_to_server = False
             return False
 
     def send(self, data, mode="coded"):
-        try:
+        if self.connected_to_server:
+            self.buffer.add(data, mode)
+        else:
+            self.main.can_tunnel_screenshot = False
+            self.main.inform("Not connected to a server")
+
+    def network_send(self, data, mode="coded"):
             if mode == "coded":
                 data = data.encode(self.FORMAT)
                 msg_length = len(data)
                 send_length = str(msg_length).encode(self.FORMAT)
                 send_length += b" " * (self.HEADER - len(send_length))
-                self.client.send(send_length)
-                self.client.send(data)
+                if not self.is_streaming:
+                    self.client.send(send_length)
+                    self.client.send(data)
+
             elif mode == "img":
                 data = data
                 msg_length = len(data)
                 send_length = str(msg_length).encode(self.FORMAT)
                 send_length += b" " * (self.HEADER - len(send_length))
+
                 self.client.send(send_length)
                 self.client.sendall(data)
-
-        except WindowsError:
-            self.main.can_tunnel_screenshot = False
-            self.main.inform("Not connected to a server")
 
     def tunnel_to_user(self, protocol,  data, mode="coded"):
         if mode == "coded":
@@ -104,7 +116,6 @@ class ControllerNetwork:
             self.send(self.main.username)
             self.send(protocol)
             self.send(data, mode="img")
-
 
     def disconnect(self):
         self.send(protocols.DISCONNECT)

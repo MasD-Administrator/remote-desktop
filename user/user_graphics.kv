@@ -207,6 +207,8 @@
 
             MDNavigationRailFabButton:
                 icon: "cancel"
+                md_bg_color:1.0,0.349,0.349,1
+                icon_color: 1, 1, 1, 1
                 on_release:
                     root.stop_remote_desktop_btn_press()
                     root.manager.transition.direction = "right"
@@ -220,5 +222,7 @@
 
 
         Image:
+            keep_ratio: False
             id : remote_desktop_image
+            allow_stretch: True
 

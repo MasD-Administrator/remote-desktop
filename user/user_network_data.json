@@ -1,6 +1,7 @@
 {
   "format": "utf-8",
-  "header": 10,
+  "header": 20,
   "server_ip": "localhost",
-  "server_port": 5050
+  "server_port": 5050,
+  "tick": 0.1
 }

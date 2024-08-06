@@ -1,4 +1,5 @@
 import json
+import time
 from time import sleep
 from math import ceil
 from threading import Thread
@@ -37,6 +38,7 @@ class Main:
 
         # Globals
         self.in_remote_desktop_session = False
+        self.host_x_size, self.host_y_size = None, None
 
         Thread(target=self.connect).start()
         self.graphics.run()  # kivy.run() is a thread by itself so no need to make it a separate one
@@ -53,6 +55,9 @@ class Main:
             json.dump(data, user_data_file, indent=4)
 
     def protocol_check(self, protocol):
+
+        if protocol == protocols.DISCONNECT_RESULT:
+            self.exit()
 
         if protocol == protocols.MAKE_USER_REQUEST_RESULT:
             result = self.network.receive()
@@ -137,8 +142,7 @@ class Main:
 
             elif tunneled_protocol == protocols.SCREEN_SIZE:
                 self.host_x_size, self.host_y_size = self.network.receive().split(protocols.DATA_SPLITTER)
-                # Thread(target=self.C_send_mouse_pos).start()
-                # TODO add the above later
+                Thread(target=self.C_send_mouse_pos).start()
 
             elif tunneled_protocol == protocols.MOUSE_POS:
                 x, y = self.network.receive().split(protocols.DATA_SPLITTER)
@@ -199,7 +203,8 @@ class Main:
     def H_set_mouse(self, x, y):
         x = int(x)
         y = int(y)
-        # self.mouse_controller.position = (x, y)
+        # self.mouse_controller.position = (x, y) # TODO undo
+        print(x,y)
 
     def C_send_mouse_down(self, button):
         if self.in_remote_desktop_session:
@@ -213,9 +218,11 @@ class Main:
         self.graphics.set_screen("remote_desktop")
         while self.in_remote_desktop_session:
             x, y = Window.mouse_pos
-            send_x, send_y = self.convert_img_to_screen_coordinates(x, y)
+            send_x, send_y = self.convert_screen_to_image_coordinates(x, y)
 
-            self.network.tunnel_to_user(protocols.MOUSE_POS, f"{send_x}{protocols.DATA_SPLITTER}{send_y}")
+            # self.network.tunnel_to_user(protocols.MOUSE_POS, f"{send_x}{protocols.DATA_SPLITTER}{send_y}")
+            # self.network.tunnel_to_user(protocols.MOUSE_POS, f"1{protocols.DATA_SPLITTER}2")
+            # TODO fix bug - server trying to read the protocol as an int (probably buffer overlap or something idk)
             sleep(self.mouse_send_rate)
 
     def C_start_remote_desktop(self):
@@ -224,7 +231,7 @@ class Main:
         self.C_start_screen_share()
 
         # Thread(target=self.C_send_key).start()
-        # TODO start the above
+        # TODO start the above (not finished)
 
     def C_send_key(self):
         if self.in_remote_desktop_session:
@@ -249,7 +256,8 @@ class Main:
 
     def C_set_image(self, image_bytes):
         self.graphics.set_image(image_bytes)
-        self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
+        if self.in_remote_desktop_session:
+            self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
 
     def H_send_screenshot_to_user(self):
         screenshot = take_screenshot()
@@ -269,7 +277,7 @@ class Main:
     def H_set_mouse_pos_send_rate(self, rate):
         self.mouse_send_rate = rate
 
-    def convert_img_to_screen_coordinates(self, x, y):
+    def convert_screen_to_image_coordinates(self, x, y):
         window_size = Window.size
         nav_rail_width = ceil(self.graphics.remote_desktop_screen.ids.nav_rail.width)
 
@@ -299,6 +307,7 @@ class Main:
                 connection_status["port"] = self.network.SERVER_PORT
 
                 Thread(target=self.network.receive_continuous).start()
+
                 if self.username is not None:
                     self.network.request_login(self.username)
                 break
@@ -398,8 +407,13 @@ class Main:
             self.inform("Enter a username")
 
     def stop(self):
-        self.network.request_logout(self.username)
-        self.network.disconnect()
+        if self.network.connected_to_server:
+            self.network.request_logout(self.username)
+            self.network.disconnect()
+        else:
+            self.exit()
+
+    def exit(self):
         from os import _exit
         _exit(0)
 

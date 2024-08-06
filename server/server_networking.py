@@ -74,12 +74,14 @@ class ServerNetwork:
             if msg_length:
                 msg_length = int(msg_length)
                 protocol = client.recv(msg_length).decode(self.FORMAT)
+                print("upper protocol : " + protocol)
                 self.protocol_check(protocol, client)
 
     def receive(self, client, mode="coded"):
         if client is not None:
             msg_length = client.recv(self.HEADER).decode(self.FORMAT)
             msg_length = int(msg_length)
+            print("msg length: "+ str(msg_length))
             if msg_length:
                 if mode == "coded":
                     msg = client.recv(msg_length)
@@ -100,6 +102,7 @@ class ServerNetwork:
 
     def protocol_check(self, protocol, user_socket):
         if protocol == protocols.DISCONNECT:
+            self.send(protocols.DISCONNECT_RESULT, user_socket)
             self.client_connected = False
 
         elif protocol == protocols.MAKE_USER_REQUEST:
@@ -177,6 +180,8 @@ class ServerNetwork:
         elif protocol == protocols.REMOVE_TUNNEL:
             username = self.receive(user_socket)
             self.users.remove_tunnel(username)
+
+
 
     def server_tunnel(self, username, tunneled_protocol, data, mode="coded"):
         tunnel_to = self.users.get_tunnel_of_user(username)

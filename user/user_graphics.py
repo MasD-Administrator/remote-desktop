@@ -73,8 +73,8 @@ class MasDController(MDApp):
         self.main_screen.main = main
 
         self.screen_manager.add_widget(self.main_screen)
-        self.screen_manager.add_widget(self.remote_desktop_screen)
         self.screen_manager.add_widget(self.settings_screen)
+        self.screen_manager.add_widget(self.remote_desktop_screen)
 
         self.settings_screen.ids.restriction_mode_switch.active = self.main.restriction_mode
 
@@ -85,6 +85,8 @@ class MasDController(MDApp):
             item.secondary_text = "Offline"
             item.add_widget(IconLeftWidget(icon="account"))
             self.main_screen.ids.user_list.add_widget(item)
+
+    # TODO add these
 
     # def on_touch_down(self, something, touch):
     #     if touch.is_mouse_scrolling:
