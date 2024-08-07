@@ -37,7 +37,7 @@ class ControllerNetwork:
                 protocol = self.client.recv(msg_length).decode(self.FORMAT)
 
                 self.main.protocol_check(protocol)
-        except ConnectionResetError:
+        except (ConnectionResetError, ValueError):
             self.connected_to_server = False
             self.main.connect()
             exit()
@@ -70,7 +70,6 @@ class ControllerNetwork:
             self.client.connect((self.SERVER_IP, self.SERVER_PORT))
 
             self.connected_to_server = True
-            self.network_send("init")
 
             self.buffer = Buffer(self)
 
@@ -85,24 +84,25 @@ class ControllerNetwork:
             self.main.can_tunnel_screenshot = False
             self.main.inform("Not connected to a server")
 
-    def network_send(self, data, mode="coded"):
-            if mode == "coded":
-                data = data.encode(self.FORMAT)
-                msg_length = len(data)
-                send_length = str(msg_length).encode(self.FORMAT)
-                send_length += b" " * (self.HEADER - len(send_length))
-                if not self.is_streaming:
-                    self.client.send(send_length)
-                    self.client.send(data)
-
-            elif mode == "img":
-                data = data
-                msg_length = len(data)
-                send_length = str(msg_length).encode(self.FORMAT)
-                send_length += b" " * (self.HEADER - len(send_length))
-
+    # this is the actual function for sending the data
+    def network_send(self, data, mode):
+        if mode == "coded":
+            data = data.encode(self.FORMAT)
+            msg_length = len(data)
+            send_length = str(msg_length).encode(self.FORMAT)
+            send_length += b" " * (self.HEADER - len(send_length))
+            if not self.is_streaming:
                 self.client.send(send_length)
-                self.client.sendall(data)
+                self.client.send(data)
+
+        elif mode == "img":
+            data = data
+            msg_length = len(data)
+            send_length = str(msg_length).encode(self.FORMAT)
+            send_length += b" " * (self.HEADER - len(send_length))
+
+            self.client.send(send_length)
+            self.client.sendall(data)
 
     def tunnel_to_user(self, protocol,  data, mode="coded"):
         if mode == "coded":

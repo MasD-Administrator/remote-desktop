@@ -220,8 +220,7 @@ class Main:
             x, y = Window.mouse_pos
             send_x, send_y = self.convert_screen_to_image_coordinates(x, y)
 
-            # self.network.tunnel_to_user(protocols.MOUSE_POS, f"{send_x}{protocols.DATA_SPLITTER}{send_y}")
-            # self.network.tunnel_to_user(protocols.MOUSE_POS, f"1{protocols.DATA_SPLITTER}2")
+            self.network.tunnel_to_user(protocols.MOUSE_POS, f"{send_x}{protocols.DATA_SPLITTER}{send_y}")
             # TODO fix bug - server trying to read the protocol as an int (probably buffer overlap or something idk)
             sleep(self.mouse_send_rate)
 

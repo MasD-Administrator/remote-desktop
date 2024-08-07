@@ -22,6 +22,6 @@ class Buffer:
                     send_data = buffer_unit[0]
                     mode = buffer_unit[1]
                     self.network.network_send(send_data, mode=mode)
-                    print(f"sent {send_data}")
                     self.buffer.pop(-1)
+
             time.sleep(self.tick)
