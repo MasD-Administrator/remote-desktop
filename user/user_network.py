@@ -21,9 +21,6 @@ class ControllerNetwork:
 
             self.tick = controller_data["tick"]
 
-            # Globals
-            self.is_streaming = False
-
             ip = controller_data["server_ip"]
             if ip == "localhost":
                 self.SERVER_IP = socket.gethostbyname(socket.gethostname())
@@ -37,15 +34,15 @@ class ControllerNetwork:
                 protocol = self.client.recv(msg_length).decode(self.FORMAT)
 
                 self.main.protocol_check(protocol)
-        except (ConnectionResetError, ValueError):
+        except ConnectionResetError:
+            import traceback
             self.connected_to_server = False
             self.main.connect()
-            exit()
 
     def receive(self, mode="coded"):
         if self.connected_to_server:
             msg_length = int(self.client.recv(self.HEADER).decode(self.FORMAT))
-            if mode == "raw":
+            if mode == "bytes":
                 message = self.client.recv(msg_length)
                 message = message
                 return message
@@ -63,15 +60,14 @@ class ControllerNetwork:
                     image_data += packet
                 return image_data
 
-
     def connect(self):
         try:
             self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client.connect((self.SERVER_IP, self.SERVER_PORT))
 
             self.connected_to_server = True
-
             self.buffer = Buffer(self)
+            return True
 
         except (TimeoutError, ConnectionRefusedError):
             self.connected_to_server = False
@@ -91,11 +87,10 @@ class ControllerNetwork:
             msg_length = len(data)
             send_length = str(msg_length).encode(self.FORMAT)
             send_length += b" " * (self.HEADER - len(send_length))
-            if not self.is_streaming:
-                self.client.send(send_length)
-                self.client.send(data)
+            self.client.send(send_length)
+            self.client.send(data)
 
-        elif mode == "img":
+        elif mode == "bytes":
             data = data
             msg_length = len(data)
             send_length = str(msg_length).encode(self.FORMAT)
@@ -111,21 +106,20 @@ class ControllerNetwork:
             self.send(protocol)
             self.send(data)
 
-        elif mode == "img":
-            self.send(protocols.IMG_TUNNEL)
+        elif mode == "bytes":
+            self.send(protocols.BYTES_TUNNEL)
             self.send(self.main.username)
             self.send(protocol)
-            self.send(data, mode="img")
+            self.send(data, mode="bytes")
 
-    def disconnect(self):
-        self.send(protocols.DISCONNECT)
+    def disconnect(self, username):
+        if self.connected_to_server:
+            self.send(protocols.DISCONNECT)
+            self.send(username)
+            print("sent disconnect msg")
 
     def request_login(self, username):
         self.send(protocols.LOG_IN_REQUEST)
-        self.send(username)
-
-    def request_logout(self, username):
-        self.send(protocols.LOG_OUT_REQUEST)
         self.send(username)
 
     def request_make_new_user(self, username):

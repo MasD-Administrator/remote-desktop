@@ -4,7 +4,10 @@ from time import sleep
 from math import ceil
 from threading import Thread
 from io import BytesIO
+from pickle import dumps, loads
 
+from pynput import keyboard
+from pynput.keyboard import Controller, Key
 from pynput.mouse import Controller, Button
 from pyautogui import size as screen_size
 from PIL.ImageGrab import grab as take_screenshot
@@ -55,11 +58,10 @@ class Main:
             json.dump(data, user_data_file, indent=4)
 
     def protocol_check(self, protocol):
-
         if protocol == protocols.DISCONNECT_RESULT:
             self.exit()
 
-        if protocol == protocols.MAKE_USER_REQUEST_RESULT:
+        elif protocol == protocols.MAKE_USER_REQUEST_RESULT:
             result = self.network.receive()
             if eval(result) == False:
                 self.inform("Account creation failed")
@@ -70,7 +72,7 @@ class Main:
                 self.local_save_user_data()
                 self.change_gui_data(self.username, self.restriction_mode)
 
-        if protocol == protocols.CHANGE_USERNAME_REQUEST_RESULT:
+        elif protocol == protocols.CHANGE_USERNAME_REQUEST_RESULT:
             result = self.network.receive()
             if not eval(result):
                 self.inform("Username change attempt failed")
@@ -81,7 +83,7 @@ class Main:
                 self.local_save_user_data()
                 self.change_gui_data(self.username, self.restriction_mode)
 
-        if protocol == protocols.MAKE_RESTRICTED_REQUEST_RESULT:
+        elif protocol == protocols.MAKE_RESTRICTED_REQUEST_RESULT:
             result = self.network.receive()
             self.restriction_mode = True
             if eval(result) == True:
@@ -91,7 +93,7 @@ class Main:
                 self.inform("Could not change the restriction mode")
             self.local_save_user_data()
 
-        if protocol == protocols.MAKE_UNRESTRICTED_REQUEST_RESULT:
+        elif protocol == protocols.MAKE_UNRESTRICTED_REQUEST_RESULT:
             result = self.network.receive()
             self.restriction_mode = False
             if eval(result) == True:
@@ -101,12 +103,12 @@ class Main:
                 self.inform("Could not change the restriction mode")
             self.local_save_user_data()
 
-        if protocol == protocols.DECIDE_TUNNEL_CREATION:
+        elif protocol == protocols.DECIDE_TUNNEL_CREATION:
             requester_name = self.network.receive()
             self.graphics.notify("Mas D Controller", f"User {requester_name} is trying to connect")
             self.graphics.open_choose_tunnel_dialog(requester_name)
 
-        if protocol == protocols.MAKE_TUNNEL_REQUEST_RESULT:
+        elif protocol == protocols.MAKE_TUNNEL_REQUEST_RESULT:
             result = self.network.receive()
             if result == protocols.USER_DOESNT_EXIST:
                 self.inform("User does not exist")
@@ -118,9 +120,8 @@ class Main:
             elif result == protocols.USER_ACCEPTED_TUNNEL_REQEUST or result == str(True):  # Tunnel made
                 self.C_start_remote_desktop()
 
-        if protocol == protocols.TUNNELED:
+        elif protocol == protocols.TUNNELED:
             tunneled_protocol = self.network.receive()
-
             if tunneled_protocol == protocols.START_REMOTE_DESKTOP:
                 _ = self.network.receive()
                 self.H_start_remote_desktop()
@@ -148,46 +149,48 @@ class Main:
                 x, y = self.network.receive().split(protocols.DATA_SPLITTER)
                 self.H_set_mouse(x, y)
 
-            elif tunneled_protocol == protocols.MOUSE_DOWN:
-                button = self.network.receive() 
-                self.H_mouse_down(button)
-
             elif tunneled_protocol == protocols.MOUSE_UP:
                 button = self.network.receive()
                 self.H_mouse_up(button)
 
+            elif tunneled_protocol == protocols.MOUSE_DOWN:
+                button = self.network.receive()
+                self.H_mouse_down(button)
+
             elif tunneled_protocol == protocols.MOUSE_SCROLL:
-                direction = self.network.receive()
-                if direction == "up":
-                    self.H_scroll_up()
-                elif direction == "down":
-                    self.H_scroll_down()
+                axis = self.network.receive()
+                self.H_scroll(axis)
 
-    def C_scroll_up(self):
-        if self.in_remote_desktop_session:
-            self.network.tunnel_to_user(protocols.MOUSE_SCROLL, "up")
+            elif tunneled_protocol == protocols.KEY_DOWN:
+                key = self.network.receive(mode="bytes")
+                self.H_key_down(loads(key))
 
-    def C_scroll_down(self):
-        if self.in_remote_desktop_session:
-            self.network.tunnel_to_user(protocols.MOUSE_SCROLL, "down")
+            elif tunneled_protocol == protocols.KEY_UP:
+                key = self.network.receive(mode="bytes")
+                self.H_key_up(loads(key))
 
-    def H_scroll_up(self):
-        self.mouse_controller.scroll(0, 1)
+    def H_scroll(self, axis):
+        print(axis)
+        if axis == "scrollup":
+            self.mouse_controller.scroll(0, 1)
+        elif axis == "scrolldown":
+            self.mouse_controller.scroll(0, -1)
 
-    def H_scroll_down(self):
-        self.mouse_controller.scroll(0, -1)
 
     # TODO for now dont need to add modifiers but will have to soon
 
     def H_mouse_up(self, button):
-        click_button = None
-        if button == "left":
-            click_button = Button.left
-        elif button == "right":
-            click_button = Button.right
-        elif button == "middle":
-            click_button = Button.middle
-        self.mouse_controller.release(click_button)
+        if button == "scrollup" or button == "scrolldown":
+            self.H_scroll(button)
+        else:
+            click_button = None
+            if button == "left":
+                click_button = Button.left
+            elif button == "right":
+                click_button = Button.right
+            elif button == "middle":
+                click_button = Button.middle
+            self.mouse_controller.release(click_button)
 
     def H_mouse_down(self, button):
 
@@ -203,14 +206,16 @@ class Main:
     def H_set_mouse(self, x, y):
         x = int(x)
         y = int(y)
-        # self.mouse_controller.position = (x, y) # TODO undo
-        print(x,y)
+        print(x, y)
+        # self.mouse_controller.position = (x, y)
 
-    def C_send_mouse_down(self, button):
+    def C_send_mouse_down(self, button):  # mouse pressed
+        if button == "scrollup" or button == "scrolldown":
+            return
         if self.in_remote_desktop_session:
             self.network.tunnel_to_user(protocols.MOUSE_DOWN, button)
 
-    def C_send_mouse_up(self, button):
+    def C_send_mouse_up(self, button):  # mouse released
         if self.in_remote_desktop_session:
             self.network.tunnel_to_user(protocols.MOUSE_UP, button)
 
@@ -221,20 +226,41 @@ class Main:
             send_x, send_y = self.convert_screen_to_image_coordinates(x, y)
 
             self.network.tunnel_to_user(protocols.MOUSE_POS, f"{send_x}{protocols.DATA_SPLITTER}{send_y}")
-            # TODO fix bug - server trying to read the protocol as an int (probably buffer overlap or something idk)
             sleep(self.mouse_send_rate)
 
     def C_start_remote_desktop(self):
         self.in_remote_desktop_session = True
         self.network.tunnel_to_user(protocols.START_REMOTE_DESKTOP, " ")
+
         self.C_start_screen_share()
+        Thread(target=self.C_start_key).start()
 
-        # Thread(target=self.C_send_key).start()
-        # TODO start the above (not finished)
+    def C_start_key(self):
+        with keyboard.Listener(on_press=self.C_on_key_down, on_release=self.C_on_key_up) as listener:
+            listener.join()
 
-    def C_send_key(self):
-        if self.in_remote_desktop_session:
-            ...
+    def C_on_key_down(self, key):
+        if self.in_remote_desktop_session and Window.focus:
+            self.network.tunnel_to_user(protocols.KEY_DOWN, dumps(key), mode="bytes")
+
+    def C_on_key_up(self, key):
+        if self.in_remote_desktop_session and Window.focus:
+            self.network.tunnel_to_user(protocols.KEY_UP, dumps(key), mode="bytes")
+
+    def H_key_down(self, key):
+        # try:
+        #     self.keyboard.press(key.char)
+        # except AttributeError:
+        #     self.keyboard.press(key)
+
+        print(key)
+
+    def H_key_up(self, key):
+        # try:
+        #     self.keyboard.release(key.char)
+        # except AttributeError:
+        #     self.keyboard.release(key)
+        print(key)
 
     def C_start_screen_share(self):
         self.graphics.set_screen("remote_desktop")
@@ -243,6 +269,7 @@ class Main:
     def H_start_remote_desktop(self):
         x, y = screen_size()
         self.network.tunnel_to_user(protocols.SCREEN_SIZE, f"{x}{protocols.DATA_SPLITTER}{y}")
+        self.keyboard = Controller()
 
     def C_stop_remote_desktop(self):
         self.in_remote_desktop_session = False
@@ -264,7 +291,7 @@ class Main:
         screenshot.save(image_byte_io, format="jpeg", quality=self.screen_share_image_quality)
         image_in_bytes = image_byte_io.getvalue()
 
-        self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="img")
+        self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="bytes")
         sleep(self.screen_share_rate)
 
     def H_set_screen_share_image_quality(self, quality):
@@ -307,8 +334,9 @@ class Main:
 
                 Thread(target=self.network.receive_continuous).start()
 
-                if self.username is not None:
+                if self.username is not None or self.username != "":
                     self.network.request_login(self.username)
+                    print("login request")
                 break
 
         self.set_switch_mode()
@@ -385,7 +413,7 @@ class Main:
         elif not restricted_mode:
             mode = "unrestricted"
 
-        self.graphics.main_screen.ids.username_label.text = f"You name [b]{str(username)}[/b] - Mode [b]{mode}[/b]"
+        self.graphics.main_screen.ids.username_label.text = f"Your name [b]{str(username)}[/b] - Mode [b]{mode}[/b]"
 
     def set_switch_mode(self):
         self.graphics.settings_screen.ids.restriction_mode_switch.active = self.restriction_mode
@@ -407,8 +435,7 @@ class Main:
 
     def stop(self):
         if self.network.connected_to_server:
-            self.network.request_logout(self.username)
-            self.network.disconnect()
+            self.network.disconnect(self.username)  # TODO cant figure this out
         else:
             self.exit()
 

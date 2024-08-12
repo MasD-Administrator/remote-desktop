@@ -3,5 +3,5 @@
   "header": 20,
   "server_ip": "localhost",
   "server_port": 5050,
-  "tick": 0.1
+  "tick": 0
 }
