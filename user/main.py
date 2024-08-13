@@ -7,8 +7,10 @@ from io import BytesIO
 from pickle import dumps, loads
 
 from pynput import keyboard
-from pynput.keyboard import Controller, Key
-from pynput.mouse import Controller, Button
+from pynput.keyboard import Controller as KeyboardController
+from pynput.keyboard import KeyCode, Key
+from pynput.mouse import Controller as MouseController
+from pynput.mouse import Button
 from pyautogui import size as screen_size
 from PIL.ImageGrab import grab as take_screenshot
 
@@ -35,7 +37,7 @@ class Main:
 
         self.network.setup()
 
-        self.mouse_controller = Controller()
+        self.mouse_controller = MouseController()
 
         self.change_gui_data(self.username, self.restriction_mode)
 
@@ -163,11 +165,11 @@ class Main:
 
             elif tunneled_protocol == protocols.KEY_DOWN:
                 key = self.network.receive(mode="bytes")
-                self.H_key_down(loads(key))
+                self.H_key_down(key)
 
             elif tunneled_protocol == protocols.KEY_UP:
                 key = self.network.receive(mode="bytes")
-                self.H_key_up(loads(key))
+                self.H_key_up(key)
 
     def H_scroll(self, axis):
         print(axis)
@@ -177,7 +179,7 @@ class Main:
             self.mouse_controller.scroll(0, -1)
 
 
-    # TODO for now dont need to add modifiers but will have to soon
+    # TODO add modifiers to mouse 
 
     def H_mouse_up(self, button):
         if button == "scrollup" or button == "scrolldown":
@@ -207,7 +209,7 @@ class Main:
         x = int(x)
         y = int(y)
         print(x, y)
-        # self.mouse_controller.position = (x, y)
+        # self.mouse_controller.position = (x, y)  # TODO undo
 
     def C_send_mouse_down(self, button):  # mouse pressed
         if button == "scrollup" or button == "scrolldown":
@@ -248,33 +250,32 @@ class Main:
             self.network.tunnel_to_user(protocols.KEY_UP, dumps(key), mode="bytes")
 
     def H_key_down(self, key):
-        # try:
-        #     self.keyboard.press(key.char)
-        # except AttributeError:
-        #     self.keyboard.press(key)
-
-        print(key)
+        key = loads(key)
+        try:
+            self.keyboard.press(key.char)
+        except AttributeError:
+            self.keyboard.press(key)
 
     def H_key_up(self, key):
-        # try:
-        #     self.keyboard.release(key.char)
-        # except AttributeError:
-        #     self.keyboard.release(key)
-        print(key)
+        key = loads(key)
+        try:
+            self.keyboard.release(key.char)
+        except AttributeError:
+            self.keyboard.release(key)
 
     def C_start_screen_share(self):
         self.graphics.set_screen("remote_desktop")
         self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
 
     def H_start_remote_desktop(self):
+        self.keyboard = KeyboardController()
         x, y = screen_size()
         self.network.tunnel_to_user(protocols.SCREEN_SIZE, f"{x}{protocols.DATA_SPLITTER}{y}")
-        self.keyboard = Controller()
 
     def C_stop_remote_desktop(self):
         self.in_remote_desktop_session = False
         self.network.tunnel_to_user(protocols.STOP_REMOTE_DESKTOP, " ")
-        self.H_stop_remote_desktop()
+        self.H_stop_remote_desktop() # calling it in here to because all the function does is request to remove the tunnel (both parties need that)
 
     def H_stop_remote_desktop(self):
         self.network.send(protocols.REMOVE_TUNNEL)
@@ -332,11 +333,13 @@ class Main:
                 connection_status["ip"] = self.network.SERVER_IP
                 connection_status["port"] = self.network.SERVER_PORT
 
-                Thread(target=self.network.receive_continuous).start()
 
-                if self.username is not None or self.username != "":
+                print(f"username : {self.username}")
+                if self.username != None:
                     self.network.request_login(self.username)
                     print("login request")
+                Thread(target=self.network.receive_continuous).start()
+
                 break
 
         self.set_switch_mode()
@@ -434,12 +437,13 @@ class Main:
             self.inform("Enter a username")
 
     def stop(self):
-        if self.network.connected_to_server:
-            self.network.disconnect(self.username)  # TODO cant figure this out
+        if self.network.connected_to_server and self.username != None:  # TODO add normal disconnect and disconnect with logout (for users with no account/name)
+            self.network.disconnect(self.username)
         else:
+            self.network.disconnect_for_non_user()
             self.exit()
 
-    def exit(self):
+    def exit(self):  # this is used so that all the threads get stopped
         from os import _exit
         _exit(0)
 

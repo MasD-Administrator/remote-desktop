@@ -35,7 +35,6 @@ class ControllerNetwork:
 
                 self.main.protocol_check(protocol)
         except ConnectionResetError:
-            import traceback
             self.connected_to_server = False
             self.main.connect()
 
@@ -116,7 +115,12 @@ class ControllerNetwork:
         if self.connected_to_server:
             self.send(protocols.DISCONNECT)
             self.send(username)
-            print("sent disconnect msg")
+            print("sent disconnect msg + username")
+
+    def disconnect_for_non_user(self):
+        if self.connected_to_server:
+            self.send(protocols.DISCONNECT_NON_USER)
+            print("sent disconnect for non user")
 
     def request_login(self, username):
         self.send(protocols.LOG_IN_REQUEST)

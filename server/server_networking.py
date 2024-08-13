@@ -106,6 +106,9 @@ class ServerNetwork:
             self.users.logout(username)
             self.send(protocols.DISCONNECT_RESULT, user_socket)
 
+        elif protocol == protocols.DISCONNECT_NON_USER:
+            self.client_connected = False
+
         elif protocol == protocols.MAKE_USER_REQUEST:
             username = self.receive(user_socket)
             self.make_new_user(username, user_socket)
