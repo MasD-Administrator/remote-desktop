@@ -1,4 +1,3 @@
-import time
 
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -13,7 +12,7 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDRectangleFlatButton
 from kivy.core.image import Image as CoreImage
 
-from win10toast_click import ToastNotifier  # for notifications
+from win10toast_click import ToastNotifier  # for notifications - specifically for the click ability
 from io import BytesIO
 
 

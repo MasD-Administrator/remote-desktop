@@ -52,7 +52,6 @@ class ServerNetwork:
                 client_connection_object.sendall(data)
             except AttributeError:
                 print("Warning [SENDALL]: cannot send")
-
             return
 
         msg_length = len(data)
@@ -61,7 +60,9 @@ class ServerNetwork:
         try:
             client_connection_object.send(send_length)
             client_connection_object.send(data)
-        except AttributeError:
+        except AttributeError as e:
+            print(e)
+            print(f"data: {data}")
             print("Warning [NORM]: cannot send")
 
     def handle_client(self, client):
@@ -107,7 +108,9 @@ class ServerNetwork:
             self.send(protocols.DISCONNECT_RESULT, user_socket)
 
         elif protocol == protocols.DISCONNECT_NON_USER:
+            print("server : disconnect for non user")
             self.client_connected = False
+            self.send(protocols.DISCONNECT_RESULT, user_socket)
 
         elif protocol == protocols.MAKE_USER_REQUEST:
             username = self.receive(user_socket)
@@ -120,7 +123,10 @@ class ServerNetwork:
         elif protocol == protocols.CHANGE_USERNAME_REQUEST:
             current_username = self.receive(user_socket)
             new_username = self.receive(user_socket)
-            self.change_username(current_username, new_username)
+            result = self.users.change_username(current_username, new_username)
+
+            self.send(protocols.CHANGE_USERNAME_REQUEST_RESULT, user_socket)
+            self.send(result, user_socket, mode="string")
 
         elif protocol == protocols.LOG_IN_REQUEST:
             username = self.receive(user_socket)
@@ -210,11 +216,6 @@ class ServerNetwork:
         self.send(protocols.DELETE_USER_REQUEST_RESULT, user_socket)
         self.send(result, user_socket, mode="string")
 
-    def change_username(self, current_username, new_username):
-        result = self.users.change_username(current_username, new_username)
-
-        self.send(protocols.CHANGE_USERNAME_REQUEST_RESULT, self.users.get_socket_of_user(new_username))
-        self.send(result, self.users.get_socket_of_user(new_username), mode="string")
 
     def make_restricted(self, username):
         result = self.users.make_restricted(username)

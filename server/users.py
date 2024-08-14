@@ -41,17 +41,16 @@ class Users:
             return False
 
     def change_username(self, current_username, new_username):
-        try:
+
+        if not self.username_in_database(new_username):
             data = self.users[current_username]
             self.users.pop(current_username)
             self.users[new_username] = data
 
             self.save_database()
             return True
-        except Exception as e:
-            print(e)
+        else:
             return False
-
 
     def make_restricted(self, user_name):
         try:

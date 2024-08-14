@@ -1,5 +1,4 @@
 import json
-import time
 from time import sleep
 from math import ceil
 from threading import Thread
@@ -8,7 +7,6 @@ from pickle import dumps, loads
 
 from pynput import keyboard
 from pynput.keyboard import Controller as KeyboardController
-from pynput.keyboard import KeyCode, Key
 from pynput.mouse import Controller as MouseController
 from pynput.mouse import Button
 from pyautogui import size as screen_size
@@ -67,6 +65,7 @@ class Main:
             result = self.network.receive()
             if eval(result) == False:
                 self.inform("Account creation failed")
+                self.username = None
             else:
                 self.network.logged_in = True
                 self.inform("Account creation successful!")
@@ -209,7 +208,7 @@ class Main:
         x = int(x)
         y = int(y)
         print(x, y)
-        # self.mouse_controller.position = (x, y)  # TODO undo
+        self.mouse_controller.position = (x, y)
 
     def C_send_mouse_down(self, button):  # mouse pressed
         if button == "scrollup" or button == "scrolldown":
@@ -390,24 +389,29 @@ class Main:
 
         username = username.upper()
 
-        if self.username is None or self.username == "":
-            self.network.request_make_new_user(username)
-        else:
-            self.network.request_change_username(self.username, username)
+        if not self.username == username:
+            if self.username is None:
+                self.network.request_make_new_user(username)
+            elif self.username != None:
+                self.network.request_change_username(self.username, username)
 
-        if self.network.connected_to_server:
-            self.username = username
+            if self.network.connected_to_server:
+                self.username = username
+            else:
+                self.username = self.username
         else:
-            self.username = self.username
-
+            self.inform("Entered your own username!")
     def save_restriction_mode_setting(self):
         restricted_mode: bool = self.graphics.settings_screen.ids.restriction_mode_switch.active
         self.restriction_mode = restricted_mode
 
-        if restricted_mode:
-            self.network.request_make_restricted(self.username)
-        elif not restricted_mode:
-            self.network.request_make_unrestricted(self.username)
+        if self.username != None:
+            if restricted_mode:
+                self.network.request_make_restricted(self.username)
+            elif not restricted_mode:
+                self.network.request_make_unrestricted(self.username)
+        else:
+            self.inform("Make an account first")
 
     def change_gui_data(self, username: str, restricted_mode):
         mode = "None"
@@ -437,10 +441,12 @@ class Main:
             self.inform("Enter a username")
 
     def stop(self):
-        if self.network.connected_to_server and self.username != None:  # TODO add normal disconnect and disconnect with logout (for users with no account/name)
-            self.network.disconnect(self.username)
-        else:
-            self.network.disconnect_for_non_user()
+        if self.network.connected_to_server:
+            if self.username != None:  # TODO add normal disconnect and disconnect with logout (for users with no account/name)
+                self.network.disconnect(self.username)
+            else:
+                self.network.disconnect_for_non_user()
+        elif not self.network.connected_to_server:
             self.exit()
 
     def exit(self):  # this is used so that all the threads get stopped
