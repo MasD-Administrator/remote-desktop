@@ -42,6 +42,7 @@ class Main:
         # Globals
         self.in_remote_desktop_session = False
         self.host_x_size, self.host_y_size = None, None
+        self.mouse_lock = False
 
         Thread(target=self.connect).start()
         self.graphics.run()  # kivy.run() is a thread by itself so no need to make it a separate one
@@ -118,7 +119,7 @@ class Main:
             elif result == protocols.USER_DECLINED_TUNNEL_REQEUST:
                 self.inform("User declined tunnel request")
 
-            elif result == protocols.USER_ACCEPTED_TUNNEL_REQEUST or result == str(True):  # Tunnel made
+            elif result == str(True):  # Tunnel made
                 self.C_start_remote_desktop()
 
         elif protocol == protocols.TUNNELED:
@@ -128,7 +129,7 @@ class Main:
                 self.H_start_remote_desktop()
             elif tunneled_protocol == protocols.STOP_REMOTE_DESKTOP:
                 _ = self.network.receive()
-                self.H_stop_remote_desktop()
+                self.stop_remote_desktop()
             elif tunneled_protocol == protocols.SEND_SCREEN:
                 request = self.network.receive()
                 if request == "on":
@@ -173,9 +174,9 @@ class Main:
     def H_scroll(self, axis):
         print(axis)
         if axis == "scrollup":
-            self.mouse_controller.scroll(0, 1)
-        elif axis == "scrolldown":
             self.mouse_controller.scroll(0, -1)
+        elif axis == "scrolldown":
+            self.mouse_controller.scroll(0, 1)
 
 
     # TODO add modifiers to mouse 
@@ -207,7 +208,6 @@ class Main:
     def H_set_mouse(self, x, y):
         x = int(x)
         y = int(y)
-        print(x, y)
         self.mouse_controller.position = (x, y)
 
     def C_send_mouse_down(self, button):  # mouse pressed
@@ -223,10 +223,11 @@ class Main:
     def C_send_mouse_pos(self):
         self.graphics.set_screen("remote_desktop")
         while self.in_remote_desktop_session:
-            x, y = Window.mouse_pos
-            send_x, send_y = self.convert_screen_to_image_coordinates(x, y)
+            if not self.mouse_lock:
+                x, y = Window.mouse_pos
+                send_x, send_y = self.convert_screen_to_image_coordinates(x, y)
 
-            self.network.tunnel_to_user(protocols.MOUSE_POS, f"{send_x}{protocols.DATA_SPLITTER}{send_y}")
+                self.network.tunnel_to_user(protocols.MOUSE_POS, f"{send_x}{protocols.DATA_SPLITTER}{send_y}")
             sleep(self.mouse_send_rate)
 
     def C_start_remote_desktop(self):
@@ -267,16 +268,17 @@ class Main:
         self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
 
     def H_start_remote_desktop(self):
+        self.in_remote_desktop_session = True
         self.keyboard = KeyboardController()
         x, y = screen_size()
         self.network.tunnel_to_user(protocols.SCREEN_SIZE, f"{x}{protocols.DATA_SPLITTER}{y}")
 
     def C_stop_remote_desktop(self):
-        self.in_remote_desktop_session = False
         self.network.tunnel_to_user(protocols.STOP_REMOTE_DESKTOP, " ")
-        self.H_stop_remote_desktop() # calling it in here to because all the function does is request to remove the tunnel (both parties need that)
+        self.stop_remote_desktop()  # both parties need to remove tunnel
 
-    def H_stop_remote_desktop(self):
+    def stop_remote_desktop(self):
+        self.in_remote_desktop_session = False
         self.network.send(protocols.REMOVE_TUNNEL)
         self.network.send(self.username)
 
@@ -284,14 +286,16 @@ class Main:
         self.graphics.set_image(image_bytes)
         if self.in_remote_desktop_session:
             self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
+            pass
 
     def H_send_screenshot_to_user(self):
         screenshot = take_screenshot()
         image_byte_io = BytesIO()
         screenshot.save(image_byte_io, format="jpeg", quality=self.screen_share_image_quality)
         image_in_bytes = image_byte_io.getvalue()
-
-        self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="bytes")
+        print(self.in_remote_desktop_session)
+        if self.in_remote_desktop_session:
+            self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="bytes")
         sleep(self.screen_share_rate)
 
     def H_set_screen_share_image_quality(self, quality):
@@ -332,11 +336,8 @@ class Main:
                 connection_status["ip"] = self.network.SERVER_IP
                 connection_status["port"] = self.network.SERVER_PORT
 
-
-                print(f"username : {self.username}")
                 if self.username != None:
                     self.network.request_login(self.username)
-                    print("login request")
                 Thread(target=self.network.receive_continuous).start()
 
                 break
@@ -401,10 +402,11 @@ class Main:
                 self.username = self.username
         else:
             self.inform("Entered your own username!")
+            
     def save_restriction_mode_setting(self):
         restricted_mode: bool = self.graphics.settings_screen.ids.restriction_mode_switch.active
         self.restriction_mode = restricted_mode
-
+        print(f"username when trying to set restrictoin mode : {self.username}")
         if self.username != None:
             if restricted_mode:
                 self.network.request_make_restricted(self.username)
@@ -426,23 +428,34 @@ class Main:
         self.graphics.settings_screen.ids.restriction_mode_switch.active = self.restriction_mode
 
     def make_tunnel_request(self, requestee_name):
-        if requestee_name != "":
-            if " " not in requestee_name:
-                if "\t" not in requestee_name:
-                    if requestee_name != self.username:
-                        self.network.make_tunnel(self.username, requestee_name)
+        if self.username != None:
+            if requestee_name != "":
+                if " " not in requestee_name:
+                    if "\t" not in requestee_name:
+                        if requestee_name != self.username:
+                            self.network.make_tunnel(self.username, requestee_name)
+                        else:
+                            self.inform("Cannot enter your own username")
                     else:
-                        self.inform("Cannot enter your own username")
+                        self.inform("No tabs allowed")
                 else:
-                    self.inform("No tabs allowed")
+                    self.inform("No spaces allowed")
             else:
-                self.inform("No spaces allowed")
+                self.inform("Enter a username")
         else:
-            self.inform("Enter a username")
+            self.inform("Make an account first")
 
+    def mouse_lock_toggle(self):
+        if not self.mouse_lock:
+            self.graphics.remote_desktop_screen.ids.mouse_lock.icon = "mouse"
+        else:
+            self.graphics.remote_desktop_screen.ids.mouse_lock.icon = "mouse-off"
+                   
+        self.mouse_lock = not self.mouse_lock
+        
     def stop(self):
         if self.network.connected_to_server:
-            if self.username != None:  # TODO add normal disconnect and disconnect with logout (for users with no account/name)
+            if self.username != None:
                 self.network.disconnect(self.username)
             else:
                 self.network.disconnect_for_non_user()

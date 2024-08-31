@@ -5,6 +5,7 @@ class Buffer:
     def __init__(self, network):
         self.network = network
         self.tick = network.tick
+
         self.buffer = []
 
         Thread(target=self.continuous_send).start()

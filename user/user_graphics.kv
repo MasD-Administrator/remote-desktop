@@ -217,6 +217,13 @@
             MDIconButton:
                 icon: "folder"
                 pos_hint: {"center_x":.5}
+            
+            MDIconButton:
+                id:mouse_lock
+                icon: "mouse-off"
+                pos_hint: {"center_x":.5}
+                on_release:
+                    root.mouse_lock_toggle_btn_press()
 
             Widget:
 

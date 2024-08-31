@@ -76,7 +76,6 @@ class ControllerNetwork:
         if self.connected_to_server:
             self.buffer.add(data, mode)
         else:
-            self.main.can_tunnel_screenshot = False
             self.main.inform("Not connected to a server")
 
     # this is the actual function for sending the data

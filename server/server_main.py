@@ -75,7 +75,6 @@ class ServerNetwork:
             if msg_length:
                 msg_length = int(msg_length)
                 protocol = client.recv(msg_length).decode(self.FORMAT)
-                print("protocol : " + protocol)
                 self.protocol_check(protocol, client)
 
     def receive(self, client, mode="coded"):
@@ -101,6 +100,7 @@ class ServerNetwork:
                     return big_data
 
     def protocol_check(self, protocol, user_socket):
+        print(protocol)
         if protocol == protocols.DISCONNECT:
             username = self.receive(user_socket)
             self.client_connected = False
@@ -108,7 +108,6 @@ class ServerNetwork:
             self.send(protocols.DISCONNECT_RESULT, user_socket)
 
         elif protocol == protocols.DISCONNECT_NON_USER:
-            print("server : disconnect for non user")
             self.client_connected = False
             self.send(protocols.DISCONNECT_RESULT, user_socket)
 
@@ -141,6 +140,7 @@ class ServerNetwork:
             self.make_unrestricted(username)
 
         elif protocol == protocols.MAKE_TUNNEL_REQUEST:
+            print("request received")
             original_requester = self.receive(user_socket)
             requestee_name = self.receive(user_socket)
             result = self.users.make_tunnel(original_requester, requestee_name)

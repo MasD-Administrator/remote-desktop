@@ -19,6 +19,9 @@ from io import BytesIO
 class RemoteDesktopScreen(Screen):
     main = None
 
+    def mouse_lock_toggle_btn_press(self):
+        self.main.mouse_lock_toggle()
+
     def stop_remote_desktop_btn_press(self):
         self.main.C_stop_remote_desktop()
 

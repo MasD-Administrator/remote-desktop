@@ -2,11 +2,12 @@
 .idea
 __pycache__
 venv
-networking*template
-user*-*Copy
-test
+code_testing
 test.txt
 Mas*D*Remote*Desktop.exe
 Mas*D*Remote*Desktop.zip
 user/dist
 user/build
+replicable/
+local_test_user
+

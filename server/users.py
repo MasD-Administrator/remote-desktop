@@ -99,6 +99,7 @@ class Users:
     def remove_tunnel(self, username):
         print(f"remove tunnel of : {username}")
         self.users[username]["tunneling_socket_object"] = None
+        print(self.users)
 
     def is_user_online(self, user_name):
         if self.users[user_name]["user_connection_object"] is None:
@@ -115,7 +116,7 @@ class Users:
 
             for user in list(self.users.keys()):
                 write_data[user] = self.users[user]["restricted"]
-
+            # stores the name and the restriction mode only
             json.dump(write_data, database, indent=4)
 
     def get_socket_of_user(self, user_name):
