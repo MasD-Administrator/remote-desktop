@@ -81,12 +81,15 @@ class Users:
     def make_tunnel(self, requester_name, requestee_name):
         if self.username_in_database(requestee_name):
             if self.is_user_online(requestee_name):
-                if not self.users[requestee_name]["restricted"]:
-                    self.users[requester_name]["tunneling_socket_object"] = self.users[requestee_name]["user_connection_object"]
-                    self.users[requestee_name]["tunneling_socket_object"] = self.users[requester_name]["user_connection_object"]
-                    return True
+                if not self.is_user_in_remote_desktop_session(requestee_name):
+                    if not self.users[requestee_name]["restricted"]:
+                        self.users[requester_name]["tunneling_socket_object"] = self.users[requestee_name]["user_connection_object"]
+                        self.users[requestee_name]["tunneling_socket_object"] = self.users[requester_name]["user_connection_object"]
+                        return True
+                    else:
+                        return protocols.USER_RESTRICTED
                 else:
-                    return protocols.USER_RESTRICTED
+                    return protocols.USER_IN_REMOTE_DESKTOP_SESSION
             else:
                 return protocols.USER_OFFLINE
         else:
@@ -106,6 +109,12 @@ class Users:
             return False  # no connection object means not online
         else:
             return True
+    
+    def is_user_in_remote_desktop_session(self, username):
+        if self.users[username]["tunneling_socket_object"]:
+            return True
+        else:
+            return False
 
     def username_in_database(self, user_name):
         return user_name in self.users

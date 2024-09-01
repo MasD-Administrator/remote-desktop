@@ -118,7 +118,8 @@ class Main:
                 self.inform("User is offline")
             elif result == protocols.USER_DECLINED_TUNNEL_REQEUST:
                 self.inform("User declined tunnel request")
-
+            elif result == protocols.USER_IN_REMOTE_DESKTOP_SESSION:
+                self.inform("User is currently in a remote desktop session")
             elif result == str(True):  # Tunnel made
                 self.C_start_remote_desktop()
 
