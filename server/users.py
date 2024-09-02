@@ -71,12 +71,13 @@ class Users:
             return False
 
     def login(self, user_name, user_connection_object):
-        print(f"{user_name} logged in")
         self.users[user_name]["user_connection_object"] = user_connection_object
+        print(f"{user_name} logged in")
 
     def logout(self, user_name):
-        print(f"{user_name} logged out")
         self.users[user_name]["user_connection_object"] = None
+        self.users[user_name]["tunneling_socket_object"] = None
+        print(f"{user_name} logged out")
 
     def make_tunnel(self, requester_name, requestee_name):
         if self.username_in_database(requestee_name):
@@ -102,7 +103,6 @@ class Users:
     def remove_tunnel(self, username):
         print(f"remove tunnel of : {username}")
         self.users[username]["tunneling_socket_object"] = None
-        print(self.users)
 
     def is_user_online(self, user_name):
         if self.users[user_name]["user_connection_object"] is None:
@@ -111,7 +111,7 @@ class Users:
             return True
     
     def is_user_in_remote_desktop_session(self, username):
-        if self.users[username]["tunneling_socket_object"]:
+        if self.users[username]["tunneling_socket_object"] is not None:
             return True
         else:
             return False

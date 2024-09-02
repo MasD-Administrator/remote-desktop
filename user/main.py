@@ -120,7 +120,7 @@ class Main:
                 self.inform("User declined tunnel request")
             elif result == protocols.USER_IN_REMOTE_DESKTOP_SESSION:
                 self.inform("User is currently in a remote desktop session")
-            elif result == str(True):  # Tunnel made
+            elif result == str(True) or protocols.USER_ACCEPTED_TUNNEL_REQEUST:  # Tunnel made
                 self.C_start_remote_desktop()
 
         elif protocol == protocols.TUNNELED:

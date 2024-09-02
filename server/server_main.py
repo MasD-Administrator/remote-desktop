@@ -66,7 +66,6 @@ class ServerNetwork:
             print("Warning [NORM]: cannot send")
 
     def handle_client(self, client):
-        self.client = client
         self.client_connected = True
 
         while self.client_connected:
@@ -75,7 +74,10 @@ class ServerNetwork:
             if msg_length:
                 msg_length = int(msg_length)
                 protocol = client.recv(msg_length).decode(self.FORMAT)
-                self.protocol_check(protocol, client)
+                should_quit = self.protocol_check(protocol, client)
+                if should_quit:
+                    break
+                    
 
     def receive(self, client, mode="coded"):
         if client is not None:
@@ -100,16 +102,15 @@ class ServerNetwork:
                     return big_data
 
     def protocol_check(self, protocol, user_socket):
-        print(protocol)
         if protocol == protocols.DISCONNECT:
             username = self.receive(user_socket)
-            self.client_connected = False
             self.users.logout(username)
             self.send(protocols.DISCONNECT_RESULT, user_socket)
+            return True
 
         elif protocol == protocols.DISCONNECT_NON_USER:
-            self.client_connected = False
             self.send(protocols.DISCONNECT_RESULT, user_socket)
+            return True
 
         elif protocol == protocols.MAKE_USER_REQUEST:
             username = self.receive(user_socket)
@@ -153,15 +154,16 @@ class ServerNetwork:
                 self.send(result, user_socket, mode="string")
 
         elif protocol == protocols.DECIDE_TUNNEL_CREATION_RETURN:
-            # these two  function are both continuation and subsets of make_tunnel initially
+            # these two  function are both continuation and functions of make_tunnel initially
             # based on the requestee inputs
-            decision = self.receive(user_socket)
-            if not eval(decision):
+            decision = eval(self.receive(user_socket)) # True if accepted
+            print(f"decision of requestee: {decision}")
+            if not decision:
                 original_requester = self.receive(user_socket)
                 self.send(protocols.MAKE_TUNNEL_REQUEST_RESULT, self.users.get_socket_of_user(original_requester))
                 self.send(protocols.USER_DECLINED_TUNNEL_REQEUST, self.users.get_socket_of_user(original_requester))
 
-            elif eval(decision):
+            elif decision:
                 original_requester = self.receive(user_socket)
                 original_requestee = self.receive(user_socket)
                 self.send(protocols.MAKE_TUNNEL_REQUEST_RESULT, self.users.get_socket_of_user(original_requester))
