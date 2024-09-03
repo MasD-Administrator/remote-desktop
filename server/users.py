@@ -72,6 +72,7 @@ class Users:
 
     def login(self, user_name, user_connection_object):
         self.users[user_name]["user_connection_object"] = user_connection_object
+        self.users[user_name]["tunneling_socket_object"] = None
         print(f"{user_name} logged in")
 
     def logout(self, user_name):

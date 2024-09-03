@@ -1,7 +1,5 @@
 {
-    "TEST": false,
-    "TEST2": false,
     "TESTLAP": false,
-    "TESTDESK": false,
-    "TESTDESKTOP": true
+    "TESTDESKTOP": true,
+    "TEST": false
 }

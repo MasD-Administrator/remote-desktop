@@ -1,6 +1,7 @@
 import socket
 import json
 import threading
+from os import _exit
 
 import users
 import protocols
@@ -127,6 +128,8 @@ class ServerNetwork:
 
             self.send(protocols.CHANGE_USERNAME_REQUEST_RESULT, user_socket)
             self.send(result, user_socket, mode="string")
+            if result:
+                self.send(new_username, user_socket)
 
         elif protocol == protocols.LOG_IN_REQUEST:
             username = self.receive(user_socket)
@@ -205,11 +208,12 @@ class ServerNetwork:
     def make_new_user(self, username, user_socket):
         result = self.users.make_new_user(username, False)
 
-        if result:
-            self.users.login(username, user_socket)
 
         self.send(protocols.MAKE_USER_REQUEST_RESULT, user_socket)
-        self.send(result, self.client, mode="string")
+        self.send(result, user_socket, mode="string")
+        if result:
+            self.send(username, user_socket)
+            self.users.login(username, user_socket)
 
     def delete_user(self, username):
         user_socket = self.users.get_socket_of_user(username)
@@ -230,5 +234,12 @@ class ServerNetwork:
         self.send(result, self.users.get_socket_of_user(username), mode="string")
 
 
+def input_check():
+    while True:
+        inpt = input(":> ")
+        if inpt == "exit":
+            _exit(0)            
+
 if __name__ == "__main__":
+    threading.Thread(target=input_check).start()
     ServerNetwork().main()

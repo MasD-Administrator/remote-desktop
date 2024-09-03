@@ -5,8 +5,7 @@ __pycache__
 venv
 code_testing
 test.txt
-Mas*D*Remote*Desktop.exe
-Mas*D*Remote*Desktop.zip
+desktop.ini
 user/dist
 user/build
 replicable/

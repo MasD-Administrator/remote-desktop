@@ -122,6 +122,14 @@ class ControllerNetwork:
             print("sent disconnect for non user")
 
     def request_login(self, username):
+        #### handeling bug - what if the users internet connection is obsecured??
+        # if self.main.in_remote_desktop_session:
+            # check if the other user has not cancelled
+            # if yes:
+                # stop remote desktop image sending and other sruff
+                # go on about normal businness
+            # elif no:
+                # start tunneling screen and other stuff
         self.send(protocols.LOG_IN_REQUEST)
         self.send(username)
 

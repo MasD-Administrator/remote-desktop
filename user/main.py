@@ -68,6 +68,8 @@ class Main:
                 self.inform("Account creation failed")
                 self.username = None
             else:
+                username = self.network.receive()
+                self.username = username
                 self.network.logged_in = True
                 self.inform("Account creation successful!")
 
@@ -76,9 +78,12 @@ class Main:
 
         elif protocol == protocols.CHANGE_USERNAME_REQUEST_RESULT:
             result = self.network.receive()
+
             if not eval(result):
                 self.inform("Username change attempt failed")
             else:
+                new_username = self.network.receive()
+                self.username = new_username
                 self.network.logged_in = True
                 self.inform("Username change attempt successful!")
 
@@ -396,11 +401,6 @@ class Main:
                 self.network.request_make_new_user(username)
             elif self.username != None:
                 self.network.request_change_username(self.username, username)
-
-            if self.network.connected_to_server:
-                self.username = username
-            else:
-                self.username = self.username
         else:
             self.inform("Entered your own username!")
             
