@@ -4,6 +4,7 @@ from math import ceil
 from threading import Thread
 from io import BytesIO
 from pickle import dumps, loads
+import os
 
 from pynput import keyboard
 from pynput.keyboard import Controller as KeyboardController
@@ -177,6 +178,55 @@ class Main:
                 key = self.network.receive(mode="bytes")
                 self.H_key_up(key)
 
+            elif tunneled_protocol == protocols.START_FILE_SHARE:
+                _ = self.network.receive()
+                self.graphics.H_open_folder_select_destination()
+
+            elif tunneled_protocol == protocols.FILE_SHARE_INITIALIZED:
+                _ = self.network.receive()
+                self.C_send_directory_structure()
+
+            elif tunneled_protocol == protocols.DIRECTORY_STRUCTURE:
+                directory_structure = self.network.receive(mode="bytes")
+                self.setup_directory_structure(loads(directory_structure))
+
+    def H_selected_file_share_destination(self, path):
+        self.H_file_share_directory_path = path
+        self.network.tunnel_to_user(protocols.FILE_SHARE_INITIALIZED, " ")
+
+    def setup_directory_structure(self, directory_structure):
+        for directory in directory_structure:
+            os.mkdir(os.path.join(self.H_file_share_directory_path, directory))
+
+    def C_share_file(self, path):
+        name = path.split("/")[-1]
+        print(name)
+
+    def C_share_folder(self, path):
+        self.C_path = path
+        self.network.tunnel_to_user(protocols.START_FILE_SHARE, " ")
+
+    def C_send_directory_structure(self):
+        folder_name = self.C_path.split('/')[-1]
+        if self.C_path:
+            self.directory_structure = []
+            self.file_structure = []
+
+            a = os.walk(self.C_path)
+            for root, dirs, files in a:
+                for directory in dirs:
+                    self.directory_structure.append(os.path.join(folder_name, directory))
+                for file in files:
+                    self.file_structure.append(os.path.join(folder_name, file))
+
+        if self.network.connected_to_server:
+            self.network.tunnel_to_user(protocols.DIRECTORY_STRUCTURE, dumps(self.directory_structure), mode="bytes")
+
+    def send_files(self, files):
+        for file in files:
+            # TODO
+            ...
+
     def H_scroll(self, axis):
         print(axis)
         if axis == "scrollup":
@@ -244,8 +294,8 @@ class Main:
         Thread(target=self.C_start_key).start()
 
     def C_start_key(self):
-        with keyboard.Listener(on_press=self.C_on_key_down, on_release=self.C_on_key_up) as listener:
-            listener.join()
+        with keyboard.Listener(on_press=self.C_on_key_down, on_release=self.C_on_key_up) as self.listener:
+            self.listener.join()
 
     def C_on_key_down(self, key):
         if self.in_remote_desktop_session and Window.focus:
@@ -281,6 +331,7 @@ class Main:
 
     def C_stop_remote_desktop(self):
         self.network.tunnel_to_user(protocols.STOP_REMOTE_DESKTOP, " ")
+        self.listener.stop()
         self.stop_remote_desktop()  # both parties need to remove tunnel
 
     def stop_remote_desktop(self):
@@ -356,6 +407,10 @@ class Main:
             self.graphics.main_screen.ids.connection_status_label.text = f"Connected to [b]{connection_status['ip']}[/b] on port [b]{connection_status['port']}[/b]"
         else:
             self.graphics.main_screen.ids.connection_status_label.text = "Not Connected!"
+    
+    def open_file_share_dialog(self):
+        print("in main file share got called")
+        self.graphics.open_file_share_dialog()
 
     def inform(self, msg):
         self.graphics.open_information_dialog(msg)

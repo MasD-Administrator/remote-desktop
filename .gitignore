@@ -1,6 +1,6 @@
+.vscode
 .git
 .idea
-.vscode
 __pycache__
 venv
 code_testing
@@ -8,7 +8,8 @@ test.txt
 desktop.ini
 user/dist
 user/build
-replicable/
 local_test_user
 test_user
+file*sharing*test
+test*folder
 

@@ -1,4 +1,4 @@
-import time
+import queue
 from threading import Thread
 
 class Buffer:
@@ -6,23 +6,28 @@ class Buffer:
         self.network = network
         self.tick = network.tick
 
-        self.buffer = []
-
-        Thread(target=self.continuous_send).start()
+        self.buffer = queue.LifoQueue()
 
     def add(self, data, mode):
-        self.buffer.insert(0, [data, mode])
+        self.buffer.put([data, mode])
+        ######
+        if not self.network.is_sending:
+            self.send()
+        else:
+            if self.network.is_sending:
+                self.send_after_wait()
 
-    def continuous_send(self):
-        while True:
-            if self.network.connected_to_server:
-                len_of_buffer = len(self.buffer)
+    def send_after_wait(self):
+        while not self.network.is_sending:
+            self.send()
+            exit()
 
-                if len_of_buffer > 0:
-                    buffer_unit = self.buffer[-1]
-                    send_data = buffer_unit[0]
-                    mode = buffer_unit[1]
-                    self.network.network_send(send_data, mode=mode)
-                    self.buffer.pop(-1)
-
-            time.sleep(self.tick)
+    def send(self):
+        try:
+            buffer_unit = self.buffer.get()
+            send_data = buffer_unit[0]
+            mode = buffer_unit[1]
+            self.network.network_send(send_data, mode=mode)
+        except IndexError:
+            self.is_waiting = False
+            print("dont worry: this is just multiple instances trying to work with sel.buffer at the same time, i could user a lock but nah")

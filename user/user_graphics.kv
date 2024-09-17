@@ -217,6 +217,8 @@
             MDIconButton:
                 icon: "folder"
                 pos_hint: {"center_x":.5}
+                on_release:
+                    root.file_share_pressed()
             
             MDIconButton:
                 id:mouse_lock
@@ -226,6 +228,12 @@
                     root.mouse_lock_toggle_btn_press()
 
             Widget:
+
+            MDRectangleFlatButton:
+                text:"(dev)"
+                pos_hint: {"center_x":.5}
+                on_release:
+                    root.manager.current = "settings"
 
 
         Image:

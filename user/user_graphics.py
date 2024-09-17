@@ -1,3 +1,4 @@
+from tkinter import filedialog
 
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -14,6 +15,7 @@ from kivy.core.image import Image as CoreImage
 
 from win10toast_click import ToastNotifier  # for notifications - specifically for the click ability
 from io import BytesIO
+from time import sleep
 
 
 class RemoteDesktopScreen(Screen):
@@ -24,6 +26,9 @@ class RemoteDesktopScreen(Screen):
 
     def stop_remote_desktop_btn_press(self):
         self.main.C_stop_remote_desktop()
+    
+    def file_share_pressed(self):
+        self.main.open_file_share_dialog() # this calls a function in main.py which then calls this scripts MasDController App
 
 
 class MainScreen(Screen):
@@ -50,10 +55,12 @@ class SettingsScreen(Screen):
 class MasDController(MDApp):
     information_dialog = None
     choose_tunnel_creation_dialog = None
+    file_share_dialog = None
 
     def __init__(self, main):
         super().__init__()
 
+        Config.set('input', 'mouse', 'mouse,disable_multitouch') # gets rid of the red dot when right/middle clicking
         Config.set('kivy', 'exit_on_escape', '0')  # when I press esc of any other fn key it closes, this negates that.
 
         Window.bind(on_mouse_down=self.on_mouse_down)
@@ -79,7 +86,7 @@ class MasDController(MDApp):
 
         self.settings_screen.ids.restriction_mode_switch.active = self.main.restriction_mode
 
-        # this is to fill the clutter, has no functionality yet (have to add recently connected)
+        # this is to fill the clutter, has no functionality yet (have to add recently connected user to the list)
         for i in range(0, 10):
             item = TwoLineIconListItem()
             item.text = "NHLCOLPOS29"
@@ -121,7 +128,9 @@ class MasDController(MDApp):
 
     @mainthread
     def make_on_top(self):
+        Window.maximize()
         Window.always_on_top = True
+        sleep(.2)
         Window.always_on_top = False
 
     def build(self):
@@ -136,6 +145,43 @@ class MasDController(MDApp):
     def decline_tunnel_creation_btn_press(self, requester_name):
         self.choose_tunnel_creation_dialog.dismiss()
         self.main.decline_tunnel_creation(requester_name)
+
+    def H_open_folder_select_destination(self):
+        self.file_share_dialog.dismiss()
+        path = filedialog.askdirectory(title="Select a folder as destination")
+        self.main.H_selected_file_share_destination(path)
+
+    def C_open_folder_select(self):
+        self.file_share_dialog.dismiss()
+        path = filedialog.askdirectory(title="Select Folder")
+        self.main.C_share_folder(path)
+
+    def C_open_file_select(self):
+        self.file_share_dialog.dismiss()
+        path = filedialog.askopenfilenames(title="Select Folder")
+        self.main.C_share_file(path)
+
+    @mainthread
+    def open_file_share_dialog(self):
+        if not self.file_share_dialog:
+            self.file_share_dialog = MDDialog(
+                buttons=[
+                    MDRectangleFlatButton(
+                        text="File(s)",
+                        theme_text_color="Custom",
+                        text_color=self.theme_cls.primary_color,
+                        on_press=lambda _: self.C_open_file_select()
+                    ),
+                    MDRectangleFlatButton(
+                        text="Folder",
+                        theme_text_color="Custom",
+                        text_color=self.theme_cls.primary_color,
+                        on_press=lambda _: self.C_open_folder_select()
+                    )
+                ]
+            )
+        self.file_share_dialog.text = str(f"Selct the type you want to send")
+        self.file_share_dialog.open()
 
     @mainthread
     def open_choose_tunnel_dialog(self, requester_name):

@@ -10,6 +10,7 @@ class ControllerNetwork:
 
         self.logged_in = False
         self.connected_to_server = False
+        self.is_sending = False
 
     def setup(self):
         with open("user_network_data.json") as controller_data_file:
@@ -80,11 +81,13 @@ class ControllerNetwork:
 
     # this is the actual function for sending the data
     def network_send(self, data, mode):
+        self.is_sending = True
         if mode == "coded":
             data = data.encode(self.FORMAT)
             msg_length = len(data)
             send_length = str(msg_length).encode(self.FORMAT)
             send_length += b" " * (self.HEADER - len(send_length))
+
             self.client.send(send_length)
             self.client.send(data)
 
@@ -96,6 +99,7 @@ class ControllerNetwork:
 
             self.client.send(send_length)
             self.client.sendall(data)
+        self.is_sending = False
 
     def tunnel_to_user(self, protocol,  data, mode="coded"):
         if mode == "coded":

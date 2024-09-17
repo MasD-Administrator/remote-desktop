@@ -1,6 +1,6 @@
 {
     "username": null,
-    "restriction_mode": false,
+    "restriction_mode": true,
     "screen_share_image_quality": 10,
     "screen_share_rate": 0.1,
     "mouse_rate": 0.2

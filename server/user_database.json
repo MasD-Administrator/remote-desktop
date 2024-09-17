@@ -1,5 +1,4 @@
 {
-    "TESTLAP": false,
-    "TESTDESKTOP": true,
-    "TEST": false
+    "TESTDESKTOP": false,
+    "TESTLAPTOP": true
 }
