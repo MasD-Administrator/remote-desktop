@@ -1,4 +1,5 @@
 from tkinter import filedialog
+from threading import Thread
 
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -147,7 +148,6 @@ class MasDController(MDApp):
         self.main.decline_tunnel_creation(requester_name)
 
     def H_open_folder_select_destination(self):
-        self.file_share_dialog.dismiss()
         path = filedialog.askdirectory(title="Select a folder as destination")
         self.main.H_selected_file_share_destination(path)
 
@@ -180,7 +180,7 @@ class MasDController(MDApp):
                     )
                 ]
             )
-        self.file_share_dialog.text = str(f"Selct the type you want to send")
+        self.file_share_dialog.text = str(f"Select the type you want to send")
         self.file_share_dialog.open()
 
     @mainthread

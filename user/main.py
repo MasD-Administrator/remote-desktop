@@ -44,6 +44,7 @@ class Main:
         self.in_remote_desktop_session = False
         self.host_x_size, self.host_y_size = None, None
         self.mouse_lock = False
+        self.new_image_received = False
 
         Thread(target=self.connect).start()
         self.graphics.run()  # kivy.run() is a thread by itself so no need to make it a separate one
@@ -143,7 +144,7 @@ class Main:
                     self.H_send_screenshot_to_user()
 
             elif tunneled_protocol == protocols.SCREEN_DATA:  # An image received
-                image_bytes = self.network.receive(mode="img")
+                image_bytes = self.network.receive(mode="big")
                 self.C_set_image(image_bytes)
 
             elif tunneled_protocol == protocols.CHANGE_SCREEN_STREAM_QUALITY:
@@ -180,23 +181,56 @@ class Main:
 
             elif tunneled_protocol == protocols.START_FILE_SHARE:
                 _ = self.network.receive()
-                self.graphics.H_open_folder_select_destination()
+                Thread(target=self.graphics.H_open_folder_select_destination).start()
 
             elif tunneled_protocol == protocols.FILE_SHARE_INITIALIZED:
                 _ = self.network.receive()
-                self.C_send_directory_structure()
+                Thread(target=self.C_setup_fileshare).start()
 
             elif tunneled_protocol == protocols.DIRECTORY_STRUCTURE:
                 directory_structure = self.network.receive(mode="bytes")
-                self.setup_directory_structure(loads(directory_structure))
+                directory_structure = loads(directory_structure)
+                Thread(target=self.H_setup_directory_structure, args=(directory_structure,)).start()
+
+            elif tunneled_protocol == protocols.DIRECTORY_STRUCTURE_SETUP_FINISHED:
+                Thread(target=self.C_send_file_data).start()
+
+            elif tunneled_protocol == protocols.FILE_DATA:
+                file_data_pair = loads(self.network.receive(mode="big"))
+                file_meta_data, file_byte_data = file_data_pair[0], file_data_pair[1]
+
+                print(f"received")
+                Thread(target=self.H_create_file, args=(file_meta_data, file_byte_data)).start()
+
+    def H_create_file(self, file_meta_data, file_byte_data):
+        with open(self.H_file_share_directory_path + "/" + file_meta_data, "wb") as file:
+            file.write(file_byte_data)
+
+    def C_send_file_data(self):
+        # in file pair index 0 is local 1 is to be sent
+        for file_pair in self.file_structure:
+            file = file_pair[0]
+            with open(file, "rb") as opened_file:
+                file_byte_data = opened_file.read()
+                file_metadata = file_pair[1]
+                print(f"send : file meta data: {file_metadata}, file byte data : {file_byte_data}")
+                self.network.tunnel_to_user(protocols.FILE_DATA, dumps([file_metadata, file_byte_data]), mode="bytes")
+                
 
     def H_selected_file_share_destination(self, path):
-        self.H_file_share_directory_path = path
-        self.network.tunnel_to_user(protocols.FILE_SHARE_INITIALIZED, " ")
+        if path != "":
+            self.H_file_share_directory_path = str(path)
+            self.network.tunnel_to_user(protocols.FILE_SHARE_INITIALIZED, " ")
+        else:
+            self.H_file_share_directory_path = None
 
-    def setup_directory_structure(self, directory_structure):
-        for directory in directory_structure:
-            os.mkdir(os.path.join(self.H_file_share_directory_path, directory))
+    def H_setup_directory_structure(self, directory_structure):
+        try:
+            for directory_path in directory_structure:
+                os.mkdir(self.H_file_share_directory_path + "/" + directory_path)
+            self.network.tunnel_to_user(protocols.DIRECTORY_STRUCTURE_SETUP_FINISHED, " ")
+        except FileExistsError:
+            self.graphics.notify("MasDController", "Folder already exists")
 
     def C_share_file(self, path):
         name = path.split("/")[-1]
@@ -206,26 +240,37 @@ class Main:
         self.C_path = path
         self.network.tunnel_to_user(protocols.START_FILE_SHARE, " ")
 
-    def C_send_directory_structure(self):
+    def C_setup_fileshare(self):
         folder_name = self.C_path.split('/')[-1]
         if self.C_path:
             self.directory_structure = []
             self.file_structure = []
 
+            self.directory_structure.append(folder_name)
+
             a = os.walk(self.C_path)
+            os.chdir(self.C_path)
+            os.chdir("..")
+            cwd = os.getcwd()
+            root_root_len = len(cwd)
+
             for root, dirs, files in a:
+                new_root = root[root_root_len:]
+
+                if files:
+                    for file in files:
+                        self.file_structure.append([os.path.join(root, file), os.path.join(new_root, file)])
+
                 for directory in dirs:
-                    self.directory_structure.append(os.path.join(folder_name, directory))
-                for file in files:
-                    self.file_structure.append(os.path.join(folder_name, file))
+                    relative_dir = os.path.join(new_root, directory)
 
-        if self.network.connected_to_server:
+                    self.directory_structure.append(relative_dir)
+
+            self.C_send_directory_structure()
+
+    def C_send_directory_structure(self):
+        if self.network.connected_to_server and self.in_remote_desktop_session:
             self.network.tunnel_to_user(protocols.DIRECTORY_STRUCTURE, dumps(self.directory_structure), mode="bytes")
-
-    def send_files(self, files):
-        for file in files:
-            # TODO
-            ...
 
     def H_scroll(self, axis):
         print(axis)
@@ -341,16 +386,15 @@ class Main:
 
     def C_set_image(self, image_bytes):
         self.graphics.set_image(image_bytes)
+        self.new_image_received = True
         if self.in_remote_desktop_session:
             self.network.tunnel_to_user(protocols.SEND_SCREEN, "on")
-            pass
 
     def H_send_screenshot_to_user(self):
         screenshot = take_screenshot()
         image_byte_io = BytesIO()
         screenshot.save(image_byte_io, format="jpeg", quality=self.screen_share_image_quality)
         image_in_bytes = image_byte_io.getvalue()
-        print(self.in_remote_desktop_session)
         if self.in_remote_desktop_session:
             self.network.tunnel_to_user(protocols.SCREEN_DATA, image_in_bytes, mode="bytes")
         sleep(self.screen_share_rate)
@@ -409,7 +453,6 @@ class Main:
             self.graphics.main_screen.ids.connection_status_label.text = "Not Connected!"
     
     def open_file_share_dialog(self):
-        print("in main file share got called")
         self.graphics.open_file_share_dialog()
 
     def inform(self, msg):
@@ -462,7 +505,7 @@ class Main:
     def save_restriction_mode_setting(self):
         restricted_mode: bool = self.graphics.settings_screen.ids.restriction_mode_switch.active
         self.restriction_mode = restricted_mode
-        print(f"username when trying to set restrictoin mode : {self.username}")
+        print(f"username when trying to set restriction mode : {self.username}")
         if self.username != None:
             if restricted_mode:
                 self.network.request_make_restricted(self.username)

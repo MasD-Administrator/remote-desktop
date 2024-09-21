@@ -1,4 +1,5 @@
 .vscode
+.vscode/
 .git
 .idea
 __pycache__

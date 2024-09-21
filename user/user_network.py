@@ -51,7 +51,7 @@ class ControllerNetwork:
                 message = message.decode(self.FORMAT)
                 return message
 
-            elif mode == "img":
+            elif mode == "big":
                 image_data = b""
                 while len(image_data) < msg_length:
                     packet = self.client.recv(msg_length - len(image_data))
