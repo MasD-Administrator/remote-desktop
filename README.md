@@ -1,5 +1,5 @@
-# **Installation**
-1. `pyinstaller the main.spec`
+# **Build**
+1. `pyinstaller main.spec`
 2. run main.exe in dist folder
 
 # **Description of the project**
