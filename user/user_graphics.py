@@ -1,5 +1,4 @@
 from tkinter import filedialog
-from threading import Thread
 
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -9,6 +8,10 @@ from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.config import Config
 from kivy.clock import mainthread
 
+from kivy.metrics import dp
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivymd.uix.gridlayout import GridLayout
 from kivymd.uix.list.list import TwoLineIconListItem, IconLeftWidget
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDRectangleFlatButton
@@ -17,6 +20,9 @@ from kivy.core.image import Image as CoreImage
 from win10toast_click import ToastNotifier  # for notifications - specifically for the click ability
 from io import BytesIO
 from time import sleep
+
+Config.set('kivy', 'exit_on_escape', '0')  # when I press esc of any other fn key it closes, this negates that.
+Config.set('input', 'mouse', 'mouse,disable_multitouch')  # gets rid of the red dot when right/middle-clicking
 
 
 class RemoteDesktopScreen(Screen):
@@ -27,9 +33,12 @@ class RemoteDesktopScreen(Screen):
 
     def stop_remote_desktop_btn_press(self):
         self.main.C_stop_remote_desktop()
-    
+
     def file_share_pressed(self):
-        self.main.open_file_share_dialog() # this calls a function in main.py which then calls this scripts MasDController App
+        self.main.open_file_share_dialog()  # this calls a function in main.py which then calls this scripts MasDController App
+
+    def host_settings_btn_press(self):
+        self.main.C_host_settings()
 
 
 class MainScreen(Screen):
@@ -61,9 +70,6 @@ class MasDController(MDApp):
     def __init__(self, main):
         super().__init__()
 
-        Config.set('input', 'mouse', 'mouse,disable_multitouch') # gets rid of the red dot when right/middle clicking
-        Config.set('kivy', 'exit_on_escape', '0')  # when I press esc of any other fn key it closes, this negates that.
-
         Window.bind(on_mouse_down=self.on_mouse_down)
         Window.bind(on_mouse_up=self.on_mouse_up)
 
@@ -87,7 +93,7 @@ class MasDController(MDApp):
 
         self.settings_screen.ids.restriction_mode_switch.active = self.main.restriction_mode
 
-        # this is to fill the clutter, has no functionality yet (have to add recently connected user to the list)
+        # this is to fill the clutter, has no functionality yet (have to add recently connected users to the list)
         for i in range(0, 10):
             item = TwoLineIconListItem()
             item.text = "NHLCOLPOS29"
@@ -95,7 +101,7 @@ class MasDController(MDApp):
             item.add_widget(IconLeftWidget(icon="account"))
             self.main_screen.ids.user_list.add_widget(item)
 
-    def on_mouse_down(self, window,  x, y, button, modifiers):
+    def on_mouse_down(self, window, x, y, button, modifiers):
         self.main.C_send_mouse_down(button)
 
     def on_mouse_up(self, window, x, y, button, modifiers):
@@ -110,14 +116,14 @@ class MasDController(MDApp):
         byte_io = BytesIO(image_byte_data)
         self.remote_desktop_screen.ids.remote_desktop_image.texture = CoreImage(byte_io, ext="jpeg").texture
 
-    def notify(self, title, message):
+    def notify(self, title, message, duration):
         try:
             notifier = ToastNotifier()
             notifier.show_toast(
                 title=title,
                 msg=message,
                 threaded=True,
-                duration=2,
+                duration=duration,
                 icon_path=None,
                 callback_on_click=self.notification_clicked
             )
@@ -129,7 +135,6 @@ class MasDController(MDApp):
 
     @mainthread
     def make_on_top(self):
-        Window.maximize()
         Window.always_on_top = True
         sleep(.2)
         Window.always_on_top = False
@@ -147,10 +152,6 @@ class MasDController(MDApp):
         self.choose_tunnel_creation_dialog.dismiss()
         self.main.decline_tunnel_creation(requester_name)
 
-    def H_open_folder_select_destination(self):
-        path = filedialog.askdirectory(title="Select a folder as destination")
-        self.main.H_selected_file_share_destination(path)
-
     def C_open_folder_select(self):
         self.file_share_dialog.dismiss()
         path = filedialog.askdirectory(title="Select Folder")
@@ -158,7 +159,7 @@ class MasDController(MDApp):
 
     def C_open_file_select(self):
         self.file_share_dialog.dismiss()
-        path = filedialog.askopenfilenames(title="Select Folder")
+        path = filedialog.askopenfilenames(title="Select File")
         self.main.C_share_file(path)
 
     @mainthread
@@ -222,8 +223,61 @@ class MasDController(MDApp):
         self.information_dialog.text = msg
         self.information_dialog.open()
 
+    @mainthread
+    def open_host_settings(self, settings):
+        if not self.information_dialog:
+            self.information_dialog = MDDialog(
+                title="Host Settings",
+                type="custom",
+                content_cls=self.host_settings_content(settings),
+                buttons=[
+                    MDRectangleFlatButton(
+                        text="Send",
+                        theme_text_color="Custom",
+                        text_color=self.theme_cls.primary_color,
+                        on_release=lambda _: self.send_host_settings()
+                    ),
+                    MDRectangleFlatButton(
+                        text="Close",
+                        theme_text_color="Custom",
+                        text_color=self.theme_cls.primary_color,
+                        on_release=lambda _: self.information_dialog.dismiss()
+                    ),
+                ],
+            )
+        self.information_dialog.open()
 
+    def host_settings_content(self, settings):
+        layout = GridLayout(cols=3, size_hint_y=None)
+        layout.height = dp(120)  # Set a fixed height if necessary
+
+        self.image_quality_label = Label(text=str(settings[0]))
+        self.screen_send_rate_label = Label(text=str(settings[1]))
+        self.mouse_rate_label = Label(text=str(settings[2]))
+
+        self.image_quality_text_input = TextInput()
+        self.screen_send_rate_text_input = TextInput()
+        self.mouse_rate_text_input = TextInput()
+
+        layout.add_widget(Label(markup=True, text="[b]screen share\nimage quality[/b]"))
+        layout.add_widget(Label(markup=True, text="[b]screen share\nrate[/b]"))
+        layout.add_widget(Label(markup=True, text="[b]mouse rate[/b]"))
+
+        layout.add_widget(self.image_quality_label)
+        layout.add_widget(self.screen_send_rate_label)
+        layout.add_widget(self.mouse_rate_label)
+
+        layout.add_widget(self.image_quality_text_input)
+        layout.add_widget(self.screen_send_rate_text_input)
+        layout.add_widget(self.mouse_rate_text_input)
+
+        return layout
+
+
+    def send_host_settings(self):
+        self.main.send_host_settings([self.image_quality_text_input.text,
+                                      self.screen_send_rate_text_input.text,
+                                      self.mouse_rate_text_input.text])
 
     def on_stop(self):
         self.main.stop()
-

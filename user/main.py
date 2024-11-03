@@ -4,6 +4,7 @@ from math import ceil
 from threading import Thread
 from io import BytesIO
 from pickle import dumps, loads
+from tkinter import filedialog
 import os
 
 from pynput import keyboard
@@ -45,6 +46,7 @@ class Main:
         self.host_x_size, self.host_y_size = None, None
         self.mouse_lock = False
         self.new_image_received = False
+        self.file_share_type = None  # file or folder
 
         Thread(target=self.connect).start()
         self.graphics.run()  # kivy.run() is a thread by itself so no need to make it a separate one
@@ -114,7 +116,7 @@ class Main:
 
         elif protocol == protocols.DECIDE_TUNNEL_CREATION:
             requester_name = self.network.receive()
-            self.graphics.notify("Mas D Controller", f"User {requester_name} is trying to connect")
+            self.graphics.notify("Mas D Controller", f"User {requester_name} is trying to connect", 2)
             self.graphics.open_choose_tunnel_dialog(requester_name)
 
         elif protocol == protocols.MAKE_TUNNEL_REQUEST_RESULT:
@@ -179,9 +181,9 @@ class Main:
                 key = self.network.receive(mode="bytes")
                 self.H_key_up(key)
 
-            elif tunneled_protocol == protocols.START_FILE_SHARE:
+            elif tunneled_protocol == protocols.START_FILE_SHARE:  # a command from the controller
                 _ = self.network.receive()
-                Thread(target=self.graphics.H_open_folder_select_destination).start()
+                Thread(target=self.H_open_folder_select_destination).start()
 
             elif tunneled_protocol == protocols.FILE_SHARE_INITIALIZED:
                 _ = self.network.receive()
@@ -193,18 +195,57 @@ class Main:
                 Thread(target=self.H_setup_directory_structure, args=(directory_structure,)).start()
 
             elif tunneled_protocol == protocols.DIRECTORY_STRUCTURE_SETUP_FINISHED:
+                _ = self.network.receive()
                 Thread(target=self.C_send_file_data).start()
 
             elif tunneled_protocol == protocols.FILE_DATA:
                 file_data_pair = loads(self.network.receive(mode="big"))
                 file_meta_data, file_byte_data = file_data_pair[0], file_data_pair[1]
 
-                print(f"received")
                 Thread(target=self.H_create_file, args=(file_meta_data, file_byte_data)).start()
+
+            elif tunneled_protocol == protocols.SEND_CURRENT_SETTINGS:
+                self.network.tunnel_to_user(protocols.CURRENT_SETTINGS, dumps(self.current_settings()), mode="bytes")
+
+            elif tunneled_protocol == protocols.CURRENT_SETTINGS:
+                self.settings = self.network.receive(mode="bytes")
+                self.graphics.open_host_settings(loads(self.settings))
+
+            elif tunneled_protocol == protocols.SET_SETTINGS:
+                settings = self.network.receive(mode="bytes")
+                settings = loads(settings)
+
+                image_quality = int(settings[0])
+                image_rate = float(settings[1])
+                mouse_rate = float(settings[2])
+                if image_quality > 100:
+                    image_quality = 100
+                if image_quality < 0:
+                    image_quality = 0
+
+                self.screen_share_image_quality = image_quality
+                self.screen_share_rate = image_rate
+                self.mouse_send_rate = mouse_rate
+
+                Thread(target=self.local_save_user_data).start()
+
+    def send_host_settings(self, settings):
+        self.network.tunnel_to_user(protocols.SET_SETTINGS, dumps(settings), mode="bytes")
+
+    def current_settings(self):
+        return [self.screen_share_image_quality, self.screen_share_rate, self.mouse_send_rate]
+
+    def C_host_settings(self):
+        self.network.tunnel_to_user(protocols.SEND_CURRENT_SETTINGS, " ")
+
+    def H_open_folder_select_destination(self):
+        path = filedialog.askdirectory(title="Select a folder as destination")
+        self.H_selected_file_share_destination(path)
 
     def H_create_file(self, file_meta_data, file_byte_data):
         with open(self.H_file_share_directory_path + "/" + file_meta_data, "wb") as file:
             file.write(file_byte_data)
+            self.graphics.notify("File sharing", f"Finished writing {file_meta_data} to disk", 1)
 
     def C_send_file_data(self):
         # in file pair index 0 is local 1 is to be sent
@@ -213,7 +254,6 @@ class Main:
             with open(file, "rb") as opened_file:
                 file_byte_data = opened_file.read()
                 file_metadata = file_pair[1]
-                print(f"send : file meta data: {file_metadata}, file byte data : {file_byte_data}")
                 self.network.tunnel_to_user(protocols.FILE_DATA, dumps([file_metadata, file_byte_data]), mode="bytes")
                 
 
@@ -230,57 +270,72 @@ class Main:
                 os.mkdir(self.H_file_share_directory_path + "/" + directory_path)
             self.network.tunnel_to_user(protocols.DIRECTORY_STRUCTURE_SETUP_FINISHED, " ")
         except FileExistsError:
-            self.graphics.notify("MasDController", "Folder already exists")
+            self.graphics.notify("MasDController", "Folder already exists", 2)
 
     def C_share_file(self, path):
-        name = path.split("/")[-1]
-        print(name)
+        if path != "":
+            self.file_share_type = "file"
+            self.C_path = path
+            self.network.tunnel_to_user(protocols.START_FILE_SHARE, " ")
 
     def C_share_folder(self, path):
-        self.C_path = path
-        self.network.tunnel_to_user(protocols.START_FILE_SHARE, " ")
+        if path != "":
+            self.file_share_type = "folder"
+            self.C_path = path
+            self.network.tunnel_to_user(protocols.START_FILE_SHARE, " ")
 
     def C_setup_fileshare(self):
-        folder_name = self.C_path.split('/')[-1]
-        if self.C_path:
-            self.directory_structure = []
-            self.file_structure = []
+        if self.file_share_type == "folder":
+            folder_name = self.C_path.split('/')[-1]
+            if self.C_path:
+                self.directory_structure = []
+                self.file_structure = []
 
-            self.directory_structure.append(folder_name)
+                self.directory_structure.append(folder_name)
 
-            a = os.walk(self.C_path)
-            os.chdir(self.C_path)
-            os.chdir("..")
-            cwd = os.getcwd()
-            root_root_len = len(cwd)
+                a = os.walk(self.C_path)
+                os.chdir(self.C_path)
+                os.chdir("..")
+                cwd = os.getcwd()
+                root_root_len = len(cwd)
 
-            for root, dirs, files in a:
-                new_root = root[root_root_len:]
+                for root, dirs, files in a:
+                    new_root = root[root_root_len:]
 
-                if files:
-                    for file in files:
-                        self.file_structure.append([os.path.join(root, file), os.path.join(new_root, file)])
+                    if files:
+                        for file in files:
+                            self.file_structure.append([os.path.join(root, file), os.path.join(new_root, file)])
 
-                for directory in dirs:
-                    relative_dir = os.path.join(new_root, directory)
+                    for directory in dirs:
+                        relative_dir = os.path.join(new_root, directory)
 
-                    self.directory_structure.append(relative_dir)
+                        self.directory_structure.append(relative_dir)
 
-            self.C_send_directory_structure()
+                if self.network.connected_to_server and self.in_remote_desktop_session:
+                    self.network.tunnel_to_user(protocols.DIRECTORY_STRUCTURE, dumps(self.directory_structure),
+                                                mode="bytes")
+        elif self.file_share_type == "file":
+            if type(self.C_path) is str:
+                self.send_file(self.C_path)
+            elif type(self.C_path) is tuple:
+                for file_path in self.C_path:
+                    self.send_file(file_path)
 
-    def C_send_directory_structure(self):
-        if self.network.connected_to_server and self.in_remote_desktop_session:
-            self.network.tunnel_to_user(protocols.DIRECTORY_STRUCTURE, dumps(self.directory_structure), mode="bytes")
+
+    def send_file(self, path):
+        file_meta_data = path.split("/")[-1]
+        with open(path, "rb") as file:
+            file_byte_data = file.read()
+        self.network.tunnel_to_user(protocols.FILE_DATA, dumps([file_meta_data, file_byte_data]), mode="bytes")
 
     def H_scroll(self, axis):
-        print(axis)
         if axis == "scrollup":
             self.mouse_controller.scroll(0, -1)
         elif axis == "scrolldown":
             self.mouse_controller.scroll(0, 1)
 
 
-    # TODO add modifiers to mouse 
+    # TODO add modifiers to mouse - no
 
     def H_mouse_up(self, button):
         if button == "scrollup" or button == "scrolldown":
@@ -505,7 +560,6 @@ class Main:
     def save_restriction_mode_setting(self):
         restricted_mode: bool = self.graphics.settings_screen.ids.restriction_mode_switch.active
         self.restriction_mode = restricted_mode
-        print(f"username when trying to set restriction mode : {self.username}")
         if self.username != None:
             if restricted_mode:
                 self.network.request_make_restricted(self.username)
